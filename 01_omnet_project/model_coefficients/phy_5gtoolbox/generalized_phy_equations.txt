@@ -1,0 +1,30 @@
+Generalized NR-PC5 PHY Runtime Equations
+Created: 02-Jun-2026 20:56:21
+
+Predictors expected at runtime:
+  x1 = log10_distance_m
+  x2 = relative_speed_mps
+  x3 = radial_velocity_mps
+  x4 = abs_radial_velocity_mps
+  x5 = heading_alignment_cos
+  x6 = los_probability
+
+toolbox_path_loss_db = 86.823530675 +15.7283329115 * log10_distance_m -0.00690777620579 * relative_speed_mps -0.00923259770211 * radial_velocity_mps -0.00528491041162 * abs_radial_velocity_mps +0.0648173966409 * heading_alignment_cos -37.1539578873 * los_probability
+
+toolbox_rssi_dbm = -35.8429190273 -25.2111199802 * log10_distance_m +0.0106857851931 * relative_speed_mps +0.0156474143183 * radial_velocity_mps +0.00479627366978 * abs_radial_velocity_mps -0.111560405169 * heading_alignment_cos +21.4837770387 * los_probability
+
+log10_toolbox_delay_spread_ns = 1.75292695313 -0.0807610996962 * log10_distance_m -3.37513292465e-05 * relative_speed_mps +0.000177683157873 * radial_velocity_mps +2.0115589726e-05 * abs_radial_velocity_mps +0.000414389547509 * heading_alignment_cos -0.40710195867 * los_probability
+
+Runtime note: toolbox_delay_spread_ns = 10^(log10_toolbox_delay_spread_ns)
+
+toolbox_k_factor_db = -126.439603865 +36.8785133863 * log10_distance_m -0.000911759023281 * relative_speed_mps -0.00570319676495 * radial_velocity_mps +0.00394104582179 * abs_radial_velocity_mps +0.122131336472 * heading_alignment_cos +102.333650875 * los_probability
+
+Runtime note: per-link shadow fading is sampled separately from the linear surrogates.
+Runtime note: packet success uses SINR -> BLER lookup tables generated with a 5G Toolbox PDSCH proxy.
+
+Channel gain uses LOS-split linear models at runtime.
+
+toolbox_channel_gain_db_los = 1.69601095351 -0.0129590494433 * log10_distance_m +0.0025315331458 * relative_speed_mps +0.000194693879394 * radial_velocity_mps -0.00350479894836 * abs_radial_velocity_mps +0.0269223638739 * heading_alignment_cos +0.00964756262103 * los_probability
+
+toolbox_channel_gain_db_nlos = 32.3396690406 -11.9186574689 * log10_distance_m -0.00204429690545 * relative_speed_mps +0.00199980767673 * radial_velocity_mps +0.00167208924114 * abs_radial_velocity_mps +0.0355610888387 * heading_alignment_cos -10.7669950314 * los_probability
+

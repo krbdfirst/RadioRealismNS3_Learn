@@ -1,0 +1,5 @@
+profile,delay_spread_ns,doppler_hz,trial_count,csv_path
+CDL-A,30.7394519320521,76.6973381826403,60,bler_curve_cdl_a.csv
+CDL-C,32.6985585070477,71.9283774752388,60,bler_curve_cdl_c.csv
+CDL-D,20.2151649167553,67.5590448553944,60,bler_curve_cdl_d.csv
+CDL-E,24.3161543154592,67.5590448553944,60,bler_curve_cdl_e.csv

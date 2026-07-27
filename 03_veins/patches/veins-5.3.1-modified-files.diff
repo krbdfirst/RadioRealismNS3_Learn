@@ -1,0 +1,1546 @@
+--- a/src/makefrag
++++ b/src/makefrag
+@@ -55,7 +55,15 @@
+   endif
+ endif
+ 
++#
++# macOS install_name_tool may need to grow load commands after linking.
++# Reserve enough header space so relinking does not fail on Apple Silicon.
++#
++ifneq (,$(findstring macos,$(PLATFORM)))
++  LDFLAGS += -Wl,-headerpad_max_install_names
++endif
+ 
++
+ VEINS_NEED_MSG6 := $(shell echo ${OMNETPP_VERSION} | grep "^5" >/dev/null 2>&1; echo $$?)
+ ifeq ($(VEINS_NEED_MSG6),0)
+   MSGCOPTS += --msg6
+@@ -65,3 +73,7 @@
+ ifeq ($(WITH_OSG), yes)
+   OMNETPP_LIBS += $(OSG_LIBS)
+ endif
++
++# veins core does not use veins_inet symbols — remove circular link dependency
++# This survives opp_makemake regeneration because makefrag is always included last.
++LIBS := $(filter-out -lveins_inet$(D),$(LIBS))
+--- a/src/veins/modules/application/ieee80211p/DemoBaseApplLayer.cc
++++ b/src/veins/modules/application/ieee80211p/DemoBaseApplLayer.cc
+@@ -43,10 +43,15 @@
+         }
+ 
+         annotations = AnnotationManagerAccess().getIfExists();
+-        ASSERT(annotations);
++        if (!annotations) {
++            EV_WARN << "DemoBaseApplLayer: AnnotationManager not found\n";
++        }
+ 
+         mac = FindModule<DemoBaseApplLayerToMac1609_4Interface*>::findSubModule(getParentModule());
+-        ASSERT(mac);
++        if (!mac) {
++            EV_WARN << "DemoBaseApplLayer: MAC interface not found in "
++                    << getParentModule()->getFullPath() << "\n";
++        }
+ 
+         // read parameters
+         headerLength = par("headerLength");
+@@ -80,6 +85,11 @@
+     else if (stage == 1) {
+ 
+         // store MAC address for quick access
++        if (!mac) {
++            EV_WARN << "DemoBaseApplLayer: skipping stage-1 MAC setup for "
++                    << getParentModule()->getFullPath() << "\n";
++            return;
++        }
+         myId = mac->getMACAddress();
+ 
+         // simulate asynchronous channel access
+--- a/src/veins/modules/application/ieee80211p/DemoBaseApplLayer.h
++++ b/src/veins/modules/application/ieee80211p/DemoBaseApplLayer.h
+@@ -136,12 +136,12 @@
+ 
+ protected:
+     /* pointers ill be set when used with TraCIMobility */
+-    TraCIMobility* mobility;
+-    TraCICommandInterface* traci;
+-    TraCICommandInterface::Vehicle* traciVehicle;
++    TraCIMobility* mobility = nullptr;
++    TraCICommandInterface* traci = nullptr;
++    TraCICommandInterface::Vehicle* traciVehicle = nullptr;
+ 
+-    AnnotationManager* annotations;
+-    DemoBaseApplLayerToMac1609_4Interface* mac;
++    AnnotationManager* annotations = nullptr;
++    DemoBaseApplLayerToMac1609_4Interface* mac = nullptr;
+ 
+     /* support for parking currently only works with TraCI */
+     bool isParked;
+@@ -170,16 +170,16 @@
+     int mySCH;
+ 
+     /* stats */
+-    uint32_t generatedWSMs;
+-    uint32_t generatedWSAs;
+-    uint32_t generatedBSMs;
+-    uint32_t receivedWSMs;
+-    uint32_t receivedWSAs;
+-    uint32_t receivedBSMs;
++    uint32_t generatedWSMs = 0;
++    uint32_t generatedWSAs = 0;
++    uint32_t generatedBSMs = 0;
++    uint32_t receivedWSMs = 0;
++    uint32_t receivedWSAs = 0;
++    uint32_t receivedBSMs = 0;
+ 
+     /* messages for periodic events such as beacon and WSA transmissions */
+-    cMessage* sendBeaconEvt;
+-    cMessage* sendWSAEvt;
++    cMessage* sendBeaconEvt = nullptr;
++    cMessage* sendWSAEvt = nullptr;
+ };
+ 
+ } // namespace veins
+--- a/src/veins/modules/application/traci/TraCIDemo11p.cc
++++ b/src/veins/modules/application/traci/TraCIDemo11p.cc
+@@ -1,4 +1,4 @@
+-//
++﻿//
+ // Copyright (C) 2006-2011 Christoph Sommer <christoph.sommer@uibk.ac.at>
+ //
+ // Documentation for these modules is at http://veins.car2x.org/
+@@ -12,108 +12,968 @@
+ //
+ // This program is distributed in the hope that it will be useful,
+ // but WITHOUT ANY WARRANTY; without even the implied warranty of
+-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ // GNU General Public License for more details.
+ //
+-// You should have received a copy of the GNU General Public License
+-// along with this program; if not, write to the Free Software
+-// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+-//
+ 
+ #include "veins/modules/application/traci/TraCIDemo11p.h"
+-
+ #include "veins/modules/application/traci/TraCIDemo11pMessage_m.h"
++#include "veins/modules/application/traci/RunMetadata.h"
++#include "veins/modules/mobility/traci/TraCIConstants.h"
++#include "veins/modules/mobility/traci/TraCIScenarioManager.h"
++#include <sstream>
++#include <iomanip>
++#include <cmath>
++#include <limits>
++#include <ctime>
++#include <vector>
++#ifdef _WIN32
++#include <direct.h>
++#else
++#include <sys/stat.h>
++#endif
+ 
+ using namespace veins;
+ 
+ Define_Module(veins::TraCIDemo11p);
+ 
++// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++//  Output base directory
++// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++static const std::string BASE_RESULTS_DIR = "results/";
++
++static void makedir(const std::string& path)
++{
++#ifdef _WIN32
++    _mkdir(path.c_str());
++#else
++    mkdir(path.c_str(), 0755);
++#endif
++}
++
++// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++//  getRunOutputDir
++//  Non-static - shared via extern with subclasses.
++//  Reuses OMNeT++ result-dir when configured so custom CSV files land beside
++//  .sca/.vec outputs. Falls back to a timestamped folder if result-dir is unset.
++//  Fallback folder format:  YYYY-MM-DD_HH-MM-SS
++// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++const std::string& getRunOutputDir()
++{
++    static std::string dir = "";
++    if (!dir.empty()) return dir;
++
++    std::string resultDir = getCurrentResultDir();
++    if (!resultDir.empty()) {
++        if (resultDir.back() != '/' && resultDir.back() != '\\') resultDir += "/";
++        makedir(BASE_RESULTS_DIR);
++        makedir(resultDir);
++        dir = resultDir;
++        return dir;
++    }
++
++    std::time_t now = std::time(nullptr);
++    std::tm*    t   = std::localtime(&now);
++
++    std::ostringstream folder;
++    folder << std::setfill('0')
++           << (t->tm_year + 1900) << "-"
++           << std::setw(2) << (t->tm_mon + 1) << "-"
++           << std::setw(2) <<  t->tm_mday     << "_"
++           << std::setw(2) <<  t->tm_hour     << "-"
++           << std::setw(2) <<  t->tm_min      << "-"
++           << std::setw(2) <<  t->tm_sec;
++
++    makedir(BASE_RESULTS_DIR);
++    dir = BASE_RESULTS_DIR + folder.str() + "/";
++    makedir(dir);
++    return dir;
++}
++
++// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++//  getRunTimestamp
++//  File-name stamp: YYYY_MM_DD_HHMM
++//  e.g. vehicle_timeseries_2026_02_28_1509.csv
++// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++static const std::string& getRunTimestamp()
++{
++    static std::string ts = "";
++    if (!ts.empty()) return ts;
++
++    std::time_t now = std::time(nullptr);
++    std::tm*    t   = std::localtime(&now);
++
++    std::ostringstream s;
++    s << std::setfill('0')
++      << (t->tm_year + 1900) << "_"
++      << std::setw(2) << (t->tm_mon + 1) << "_"
++      << std::setw(2) <<  t->tm_mday     << "_"
++      << std::setw(2) <<  t->tm_hour
++      << std::setw(2) <<  t->tm_min;
++    ts = s.str();
++    return ts;
++}
++
++#define OUTPUT_DIR (getRunOutputDir())
++
++// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++//  Thresholds
++// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++static const double HARD_BRAKE_THRESHOLD      = -4.0;  // m/sÂ² hard braking
++static const double EMERGENCY_BRAKE_THRESHOLD = -7.0;  // m/sÂ² emergency braking
++static const double BRAKE_START_THRESHOLD     = -0.5;  // m/sÂ² episode begins
++static const double BRAKE_END_THRESHOLD       = -0.2;  // m/sÂ² episode ends
++static const double SPEED_STOP_THRESHOLD      =  0.1;  // m/s  considered stopped
++static const double COLLISION_GAP_THRESHOLD   =  1.0;  // m    gap â‰¤ this â†’ collision
++static const double COLLISION_STOP_SECONDS    = 10.0;  // s    must be stopped this long
++static const double TTC_INFINITY              = 999.0; // sentinel "no TTC risk"
++static const double ACTIVE_TRANSPORT_COLLISION_DISTANCE = 1.5; // m
++static const double TLS_VIOLATION_DISTANCE_THRESHOLD    = 8.0; // m
++static const double PDR_TIME_BIN_SECONDS                = 0.1; // s
++
++static std::string csvEscape(const std::string& s) {
++    if (s.find(',') != std::string::npos) return "\"" + s + "\"";
++    return s;
++}
++
++static int isCavVehicleType(const std::string& vehicleType)
++{
++    return (vehicleType == "veh_av" || vehicleType == "veh_cav") ? 1 : 0;
++}
++
++static int lookupLeaderIsCav(TraCIMobility* mobility, const std::string& leaderId)
++{
++    if (!mobility || leaderId.empty()) return 0;
++
++    try {
++        std::string leaderType = mobility->getCommandInterface()->vehicle(leaderId).getTypeId();
++        return isCavVehicleType(leaderType);
++    } catch (...) {
++        return 0;
++    }
++}
++
++static double lookupLeaderSpeed(TraCIMobility* mobility, const std::string& leaderId)
++{
++    if (!mobility || leaderId.empty()) return 0.0;
++
++    try {
++        return mobility->getCommandInterface()->vehicle(leaderId).getSpeed();
++    } catch (...) {
++        return 0.0;
++    }
++}
++
++static char normalizeTlsSignal(char rawSignal)
++{
++    return SpatPayload::normalizeSignal(rawSignal);
++}
++
++// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++//  Single static stream shared across ALL
++//  vehicle instances in one simulation run.
++// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++static std::ofstream s_timeseriesFile;
++static bool          s_fileInitialised = false;
++
++// Shared spat_response.csv - written by TraCIDemo11p (baseline) and
++// any subclass. Opened here so the baseline run always generates
++// the file.
++std::ofstream s_spatResponseFile;
++static bool          s_spatResponseReady = false;
++static std::ofstream s_networkPdrFile;
++static bool          s_networkPdrReady = false;
++static bool          s_networkPdrWritten = false;
++static std::string   s_networkPdrRunId;
++static long          s_activeAppInstances = 0;
++
++struct ActiveTransportSnapshot {
++    double time = -1.0;
++    std::vector<std::pair<std::string, Coord>> pedestrians;
++    std::vector<std::pair<std::string, Coord>> cyclists;
++};
++
++struct PdrCounters {
++    long attempts = 0;
++    long deliveries = 0;
++};
++
++struct PdrStepCounters {
++    PdrCounters v2v;
++    PdrCounters v2i;
++};
++
++static ActiveTransportSnapshot s_activeTransportSnapshot;
++static std::map<long long, PdrStepCounters> s_pdrSteps;
++
++static long long pdrStepKey(double t)
++{
++    return static_cast<long long>(std::floor((t / PDR_TIME_BIN_SECONDS) + 1e-9));
++}
++
++static double pdrStepTime(long long key)
++{
++    return key * PDR_TIME_BIN_SECONDS;
++}
++
++static void initNetworkPdrFile()
++{
++    if (s_networkPdrReady) return;
++    s_networkPdrReady = true;
++    s_networkPdrFile.open(getRunOutputDir() + "network_pdr.csv");
++    if (s_networkPdrFile.is_open()) {
++        s_networkPdrFile
++            << "run_number,"
++            << "seed_set,"
++            << "run_id,"
++            << "time_s,"
++            << "v2v_attempts,"
++            << "v2v_deliveries,"
++            << "v2v_pdr,"
++            << "v2i_attempts,"
++            << "v2i_deliveries,"
++            << "v2i_pdr\n";
++        s_networkPdrFile.flush();
++    }
++}
++
++static void prepareNetworkPdrForCurrentRun()
++{
++    std::string currentRunId = getCurrentRunId();
++    if (s_networkPdrRunId == currentRunId) return;
++
++    s_networkPdrRunId = currentRunId;
++    s_networkPdrWritten = false;
++    s_pdrSteps.clear();
++}
++
++static void notePdrAttempt(bool isV2V, double t)
++{
++    auto& bucket = s_pdrSteps[pdrStepKey(t)];
++    if (isV2V) bucket.v2v.attempts++;
++    else bucket.v2i.attempts++;
++}
++
++static void notePdrDelivery(bool isV2V, double t)
++{
++    auto& bucket = s_pdrSteps[pdrStepKey(t)];
++    if (isV2V) bucket.v2v.deliveries++;
++    else bucket.v2i.deliveries++;
++}
++
++static PdrCounters getPdrCounters(bool isV2V, double t)
++{
++    auto it = s_pdrSteps.find(pdrStepKey(t));
++    if (it == s_pdrSteps.end()) return {};
++    return isV2V ? it->second.v2v : it->second.v2i;
++}
++
++double getLoggedStepPdr(bool isV2V, double t)
++{
++    PdrCounters counters = getPdrCounters(isV2V, t);
++    if (counters.attempts <= 0) return 1.0;
++    return static_cast<double>(counters.deliveries) / counters.attempts;
++}
++
++long getLoggedStepAttempts(bool isV2V, double t)
++{
++    return getPdrCounters(isV2V, t).attempts;
++}
++
++long getLoggedStepDeliveries(bool isV2V, double t)
++{
++    return getPdrCounters(isV2V, t).deliveries;
++}
++
++void recordPdrAttempt(bool isV2V, double t)
++{
++    notePdrAttempt(isV2V, t);
++}
++
++void recordPdrDelivery(bool isV2V, double t)
++{
++    notePdrDelivery(isV2V, t);
++}
++
++static void writeNetworkPdrFileOnce()
++{
++    if (s_networkPdrWritten || !s_networkPdrFile.is_open()) return;
++    s_networkPdrWritten = true;
++
++    for (const auto& kv : s_pdrSteps) {
++        const auto& step = kv.second;
++        double v2vPdr = (step.v2v.attempts > 0)
++            ? static_cast<double>(step.v2v.deliveries) / step.v2v.attempts
++            : 1.0;
++        double v2iPdr = (step.v2i.attempts > 0)
++            ? static_cast<double>(step.v2i.deliveries) / step.v2i.attempts
++            : 1.0;
++
++        s_networkPdrFile << std::fixed << std::setprecision(4)
++            << getCurrentRunCsvPrefix()
++            << pdrStepTime(kv.first) << ","
++            << step.v2v.attempts << ","
++            << step.v2v.deliveries << ","
++            << v2vPdr << ","
++            << step.v2i.attempts << ","
++            << step.v2i.deliveries << ","
++            << v2iPdr << "\n";
++    }
++    s_networkPdrFile.flush();
++}
++
++static void refreshActiveTransportSnapshot(TraCICommandInterface* ci, double currentTime)
++{
++    if (!ci) return;
++    if (std::fabs(s_activeTransportSnapshot.time - currentTime) < 1e-9) return;
++
++    s_activeTransportSnapshot = {};
++    s_activeTransportSnapshot.time = currentTime;
++
++    auto* mgr = TraCIScenarioManagerAccess().get();
++    if (!mgr) return;
++
++    for (const auto& kv : mgr->getManagedHosts()) {
++        cModule* mod = kv.second;
++        if (!mod) continue;
++
++        auto* hostMobility = dynamic_cast<TraCIMobility*>(mod->getSubmodule("mobility"));
++        if (!hostMobility) continue;
++
++        try {
++            std::string externalId = hostMobility->getExternalId();
++            Coord pos = hostMobility->getPositionAt(simTime());
++            std::string typeId = ci->vehicle(externalId).getTypeId();
++
++            if (typeId == "bike_human") {
++                s_activeTransportSnapshot.cyclists.push_back({externalId, pos});
++            }
++            else if (typeId == "ped_human") {
++                s_activeTransportSnapshot.pedestrians.push_back({externalId, pos});
++            }
++        } catch (...) {
++        }
++    }
++}
++
++static void initSpatResponseFile()
++{
++    if (s_spatResponseReady) return;
++    s_spatResponseReady = true;
++    s_spatResponseFile.open(getRunOutputDir() + "spat_response.csv");
++    if (s_spatResponseFile.is_open()) {
++        s_spatResponseFile
++            << "run_number,"
++            << "seed_set,"
++            << "run_id,"
++            << "vehicle_id,"
++            << "tls_id,"
++            << "phase,"
++            << "ttc_at_receipt_s,"
++            << "time_sent_s,"
++            << "time_received_s,"
++            << "time_acted_s,"
++            << "speed_at_receipt_mps,"
++            << "configured_delay_s,"
++            << "actual_delay_s,"
++            << "extra_distance_m,"
++            << "auth_reason,"
++            << "network_step_v2i_attempts,"
++            << "network_step_v2i_deliveries,"
++            << "network_step_v2i_pdr\n";
++        s_spatResponseFile.flush();
++    }
++}
++
++void TraCIDemo11p::initCSVFiles()
++{
++    if (s_fileInitialised) return;      // first vehicle only
++    s_fileInitialised = true;
++
++    std::string dir  = OUTPUT_DIR;      // creates folder on first call
++    std::string name = "vehicle_timeseries_" + getRunTimestamp() + ".csv";
++
++    s_timeseriesFile.open(dir + name);
++    if (!s_timeseriesFile.is_open())
++        throw cRuntimeError("TraCIDemo11p: cannot open %s in %s",
++                            name.c_str(), dir.c_str());
++
++    s_timeseriesFile
++        << "run_number,"
++        << "seed_set,"
++        << "run_id,"
++        << "time,"
++        << "vehicle_id,"
++        << "ego_is_cav,"
++        << "vehicle_type,"           // "veh_av" for CAVs, "veh_human" for ManualVehicle
++        << "speed_mps,"
++        << "acceleration_mps2,"
++        << "gap_to_leader_m,"
++        << "leader_vehicle_id,"
++        << "leader_is_cav,"
++        << "ttc_s,"
++        << "braking_distance_m,"
++        << "hard_brake_event,"       // 1 on first step where decel â‰¤ -4 m/sÂ²
++        << "emergency_brake_event,"  // 1 on first step where decel â‰¤ -7 m/sÂ²
++        << "collision,"              // 1 while stopped â‰¥10 s with gap â‰¤1 m
++        << "tls_violation_event,"
++        << "pedestrian_collision_event,"
++        << "cyclist_collision_event,"
++        << "active_transport_collision_event,"
++        << "involves_cav\n";         // 1 = CAV involved, 0 = no CAV in this interaction
++}
++
++// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++//  initialize
++// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ void TraCIDemo11p::initialize(int stage)
+ {
+     DemoBaseApplLayer::initialize(stage);
+     if (stage == 0) {
+-        sentMessage = false;
+-        lastDroveAt = simTime();
++        ++s_activeAppInstances;
++        sentMessage  = false;
++        lastDroveAt  = simTime();
+         currentSubscribedServiceId = -1;
+-    }
++
++        prevSpeed    = -1.0;
++        prevTime     = simTime();
++        prevBraking  = false;
++        prevTlsId    = "";
++        prevTlsState = -1.0;
++
++        // Per-vehicle SPaT state
++        spatPhase_          = 'U';
++        spatSpeedOverride_  = false;
++        spatNormalMaxSpeed_ = 0.0;
++        ttcLookaheadDistance_ = std::max(0.0, par("ttcLookaheadDistance").doubleValue());
++        isVehicleActive_    = true;
++
++        // Per-vehicle braking state
++        inBrakingEpisode_     = false;
++        brakeEpisodeDist_     = 0.0;
++        brakeEpisodeMaxDecel_ = 0.0;
++        brakeLastX_           = 0.0;
++        brakeLastY_           = 0.0;
++        hardBrakeFired_       = false;
++        emergencyBrakeFired_  = false;
++
++        // Per-vehicle collision state
++        inCollision_  = false;
++        stoppedSince_ = -1;
++        actualCollision_ = false;
++        tlsViolationLatched_ = false;
++        tlsViolationActive_ = false;
++        pedCollisionLatched_ = false;
++        bikeCollisionLatched_ = false;
++        lastRoadId_.clear();
++        lastObservedTlsId_.clear();
++        lastObservedTlsSignal_ = 'U';
++        lastObservedTlsDistance_ = -1.0;
++        if (mobility) mobility->subscribe(TraCIMobility::collisionSignal, this);
++
++        initCSVFiles();                      // guarded â€” only first vehicle opens
++        initSpatResponseFile();               // opens spat_response.csv for baseline
++        initNetworkPdrFile();
++        prepareNetworkPdrForCurrentRun();
++        timeseriesFile = &s_timeseriesFile;  // all vehicles share one stream
++    }
++}
++
++// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++//  finish  â€“  flush shared stream
++// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++void TraCIDemo11p::finish()
++{
++    // FIRST: mark inactive â€” prevents any further TraCI calls
++    isVehicleActive_ = false;
++
++    // Do NOT call setSpeed here â€” vehicle is being removed from SUMO.
++    // SUMO handles speed constraint cleanup automatically on vehicle removal.
++    // Attempting setSpeed on a departing vehicle causes status 255.
++    spatSpeedOverride_ = false;
++
++    DemoBaseApplLayer::finish();
++    if (s_timeseriesFile.is_open()) s_timeseriesFile.flush();
++
++    if (s_activeAppInstances > 0) --s_activeAppInstances;
++    if (s_activeAppInstances == 0) {
++        writeNetworkPdrFileOnce();
++    }
++}
++
++// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++//  getLeaderGap
++// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++double TraCIDemo11p::getLeaderGap()
++{
++    auto leader = getLeaderInfo();
++    return leader.second;   // -1 when no leader within lookahead
+ }
+ 
+-void TraCIDemo11p::onWSA(DemoServiceAdvertisment* wsa)
++double TraCIDemo11p::getLeaderLookaheadDistance() const
+ {
+-    if (currentSubscribedServiceId == -1) {
+-        mac->changeServiceChannel(static_cast<Channel>(wsa->getTargetChannel()));
+-        currentSubscribedServiceId = wsa->getPsid();
+-        if (currentOfferedServiceId != wsa->getPsid()) {
+-            stopService();
+-            startService(static_cast<Channel>(wsa->getTargetChannel()), wsa->getPsid(), "Mirrored Traffic Service");
+-        }
++    return ttcLookaheadDistance_;
++}
++
++std::pair<std::string, double> TraCIDemo11p::getLeaderInfo() const
++{
++    if (!traciVehicle) return {"", -1.0};
++    return traciVehicle->getLeader(getLeaderLookaheadDistance());
++}
++
++// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++//  computeTTC
++// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++double TraCIDemo11p::computeTTC(double speed, double leaderSpeed, double gap)
++{
++    if (gap <= 0)              return 0.0;
++    double rel = speed - leaderSpeed;
++    if (rel <= 0)              return TTC_INFINITY;
++    return gap / rel;
++}
++
++void TraCIDemo11p::receiveSignal(cComponent* source, simsignal_t signalID, bool value, cObject* details)
++{
++    Enter_Method_Silent();
++    if (signalID == TraCIMobility::collisionSignal) {
++        actualCollision_ = value;
++        return;
+     }
++    cListener::receiveSignal(source, signalID, value, details);
+ }
+ 
+-void TraCIDemo11p::onWSM(BaseFrame1609_4* frame)
++void TraCIDemo11p::updateTlsObservation(int& tlsViolationEvent)
+ {
+-    TraCIDemo11pMessage* wsm = check_and_cast<TraCIDemo11pMessage*>(frame);
++    tlsViolationEvent = 0;
++    if (!isVehicleActive_ || !mobility || !traciVehicle) return;
+ 
+-    findHost()->getDisplayString().setTagArg("i", 1, "green");
++    std::string currentRoadId;
++    try {
++        currentRoadId = mobility->getRoadId();
++    } catch (...) {
++        return;
++    }
+ 
+-    if (mobility->getRoadId()[0] != ':') traciVehicle->changeRoute(wsm->getDemoData(), 9999);
+-    if (!sentMessage) {
+-        sentMessage = true;
+-        // repeat the received traffic update once in 2 seconds plus some random delay
+-        wsm->setSenderAddress(myId);
+-        wsm->setSerial(3);
+-        scheduleAt(simTime() + 2 + uniform(0.01, 0.2), wsm->dup());
++    bool onInternalEdge = !currentRoadId.empty() && currentRoadId[0] == ':';
++    bool wasOnInternalEdge = !lastRoadId_.empty() && lastRoadId_[0] == ':';
++
++    if (!onInternalEdge) {
++        tlsViolationLatched_ = false;
++        tlsViolationActive_ = false;
++        lastObservedTlsId_.clear();
++        lastObservedTlsSignal_ = 'U';
++        lastObservedTlsDistance_ = -1.0;
++
++        try {
++            for (const auto& nextTls : traciVehicle->getNextTls()) {
++                std::string tlsId = std::get<0>(nextTls);
++                double distanceToTls = std::get<2>(nextTls);
++                char signal = normalizeTlsSignal(static_cast<char>(std::get<3>(nextTls)));
++                if (tlsId.empty() || distanceToTls < 0.0) continue;
++                lastObservedTlsId_ = tlsId;
++                lastObservedTlsSignal_ = signal;
++                lastObservedTlsDistance_ = distanceToTls;
++                break;
++            }
++        } catch (...) {
++        }
+     }
++    else if (!wasOnInternalEdge) {
++        bool enteredOnRed = (lastObservedTlsSignal_ == 'R' || lastObservedTlsSignal_ == 'Y');
++        bool closeEnough = (lastObservedTlsDistance_ >= 0.0 &&
++                            lastObservedTlsDistance_ <= TLS_VIOLATION_DISTANCE_THRESHOLD);
++        if (enteredOnRed && closeEnough && !tlsViolationLatched_) {
++            tlsViolationEvent = 1;
++            tlsViolationLatched_ = true;
++            tlsViolationActive_ = true;
++        }
++    }
++
++    lastRoadId_ = currentRoadId;
+ }
+ 
+-void TraCIDemo11p::handleSelfMsg(cMessage* msg)
++void TraCIDemo11p::updateActiveTransportRisk(int& pedCollisionEvent,
++                                             int& bikeCollisionEvent,
++                                             int& activeTransportCollisionEvent)
+ {
+-    if (TraCIDemo11pMessage* wsm = dynamic_cast<TraCIDemo11pMessage*>(msg)) {
+-        // send this message on the service channel until the counter is 3 or higher.
+-        // this code only runs when channel switching is enabled
+-        sendDown(wsm->dup());
+-        wsm->setSerial(wsm->getSerial() + 1);
+-        if (wsm->getSerial() >= 3) {
+-            // stop service advertisements
+-            stopService();
+-            delete (wsm);
++    pedCollisionEvent = 0;
++    bikeCollisionEvent = 0;
++    activeTransportCollisionEvent = 0;
++    if (!isVehicleActive_ || !mobility) return;
++
++    TraCICommandInterface* ci = nullptr;
++    try {
++        ci = mobility->getCommandInterface();
++    } catch (...) {
++        return;
++    }
++    refreshActiveTransportSnapshot(ci, simTime().dbl());
++
++    Coord myPos;
++    std::string myId;
++    try {
++        myPos = mobility->getPositionAt(simTime());
++        myId = mobility->getExternalId();
++    } catch (...) {
++        return;
++    }
++
++    const double collisionDistance =
++        actualCollision_ ? (ACTIVE_TRANSPORT_COLLISION_DISTANCE + 1.0)
++                         : ACTIVE_TRANSPORT_COLLISION_DISTANCE;
++
++    bool pedHitNow = false;
++    for (const auto& ped : s_activeTransportSnapshot.pedestrians) {
++        if (myPos.distance(ped.second) <= collisionDistance) {
++            pedHitNow = true;
++            break;
+         }
+-        else {
+-            scheduleAt(simTime() + 1, wsm);
++    }
++
++    bool bikeHitNow = false;
++    for (const auto& bike : s_activeTransportSnapshot.cyclists) {
++        if (bike.first == myId) continue;
++        if (myPos.distance(bike.second) <= collisionDistance) {
++            bikeHitNow = true;
++            break;
+         }
+     }
+-    else {
+-        DemoBaseApplLayer::handleSelfMsg(msg);
++
++    if (pedHitNow && !pedCollisionLatched_) {
++        pedCollisionEvent = 1;
++        pedCollisionLatched_ = true;
+     }
++    else if (!pedHitNow) {
++        pedCollisionLatched_ = false;
++    }
++
++    if (bikeHitNow && !bikeCollisionLatched_) {
++        bikeCollisionEvent = 1;
++        bikeCollisionLatched_ = true;
++    }
++    else if (!bikeHitNow) {
++        bikeCollisionLatched_ = false;
++    }
++
++    if (pedCollisionEvent || bikeCollisionEvent) {
++        activeTransportCollisionEvent = 1;
++    }
++
++    actualCollision_ = false;
+ }
+ 
++// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++//  handlePositionUpdate  â€“  called every step
++// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ void TraCIDemo11p::handlePositionUpdate(cObject* obj)
+ {
+     DemoBaseApplLayer::handlePositionUpdate(obj);
+ 
+-    // stopped for for at least 10s?
+-    if (mobility->getSpeed() < 1) {
+-        if (simTime() - lastDroveAt >= 10 && sentMessage == false) {
++    // â”€â”€ Basic telemetry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++    double      currentTime = simTime().dbl();
++    std::string vehicleId   = mobility->getExternalId();
++    double      speed       = mobility->getSpeed();         // m/s
++
++    // â”€â”€ Acceleration (numerical derivative) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++    double acceleration = 0.0;
++    if (prevSpeed >= 0.0) {
++        double dt = (simTime() - prevTime).dbl();
++        if (dt > 0) acceleration = (speed - prevSpeed) / dt;
++    }
++    prevSpeed = speed;
++    prevTime  = simTime();
++
++    // â”€â”€ Leader, gap, leader ID â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++    auto        leaderPair  = getLeaderInfo();
++    double      gap         = leaderPair.second;             // -1 = no leader
++    std::string leaderId    = (gap >= 0) ? leaderPair.first : "";
++    int         egoIsCav    = 1;
++    int         leaderIsCav = lookupLeaderIsCav(mobility, leaderId);
++    double      leaderSpeed = lookupLeaderSpeed(mobility, leaderId);
++
++    // â”€â”€ TTC â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++    // -1 reported when no leader or vehicle is not closing on leader.
++    double ttc = -1.0;
++    if (gap >= 0) {
++        double raw = computeTTC(speed, leaderSpeed, gap);
++        ttc = (raw >= TTC_INFINITY) ? -1.0 : raw;
++    }
++
++    // â”€â”€ Current XY for braking distance â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++    double cx = mobility->getPositionAt(simTime()).x;
++    double cy = mobility->getPositionAt(simTime()).y;
++
++    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++    //  Braking episode tracking (per vehicle)
++    //
++    //  Episode begins: accel â‰¤ -0.5 m/sÂ² while moving
++    //  Episode ends:   accel recovers â‰¥ -0.2 m/sÂ² OR vehicle stops
++    //
++    //  hard_brake_event      : fires once per episode when max decel â‰¤ -4
++    //  emergency_brake_event : fires once per episode when max decel â‰¤ -7
++    //  braking_distance_m    : Euclidean distance accumulated since episode
++    //                          start; 0 when not in an episode
++    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++    int hardBrakeFlag      = 0;
++    int emergencyBrakeFlag = 0;
++
++    if (!inBrakingEpisode_) {
++        if (acceleration <= BRAKE_START_THRESHOLD &&
++            speed > SPEED_STOP_THRESHOLD) {
++            // Start new episode
++            inBrakingEpisode_     = true;
++            brakeEpisodeDist_     = 0.0;
++            brakeEpisodeMaxDecel_ = acceleration;
++            brakeLastX_           = cx;
++            brakeLastY_           = cy;
++            hardBrakeFired_       = false;
++            emergencyBrakeFired_  = false;
++        }
++    } else {
++        // Accumulate distance step-by-step
++        double dx = cx - brakeLastX_;
++        double dy = cy - brakeLastY_;
++        brakeEpisodeDist_ += std::sqrt(dx*dx + dy*dy);
++        brakeLastX_ = cx;
++        brakeLastY_ = cy;
++
++        // Track worst deceleration
++        if (acceleration < brakeEpisodeMaxDecel_)
++            brakeEpisodeMaxDecel_ = acceleration;
++
++        // Fire hard_brake_event once per episode
++        if (!hardBrakeFired_ &&
++            brakeEpisodeMaxDecel_ <= HARD_BRAKE_THRESHOLD) {
++            hardBrakeFired_ = true;
++            hardBrakeFlag   = 1;
++        }
++
++        // Fire emergency_brake_event once per episode
++        if (!emergencyBrakeFired_ &&
++            brakeEpisodeMaxDecel_ <= EMERGENCY_BRAKE_THRESHOLD) {
++            emergencyBrakeFired_ = true;
++            emergencyBrakeFlag   = 1;
++        }
++
++        // Episode ends when vehicle stops OR accel recovers
++        if (speed <= SPEED_STOP_THRESHOLD ||
++            acceleration >= BRAKE_END_THRESHOLD) {
++            inBrakingEpisode_ = false;
++        }
++    }
++
++    double brakingDist = inBrakingEpisode_ ? brakeEpisodeDist_ : 0.0;
++
++    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++    //  Collision detection (per vehicle)
++    //  Condition: stopped â‰¥ 10 s AND gap â‰¤ 1 m
++    //  Flag stays 1 until vehicle starts moving again.
++    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++    int collisionFlag = 0;
++    if (speed <= SPEED_STOP_THRESHOLD) {
++        if (stoppedSince_ < 0) stoppedSince_ = simTime();
++        double stoppedFor = (simTime() - stoppedSince_).dbl();
++        if (stoppedFor >= COLLISION_STOP_SECONDS &&
++            gap >= 0.0 && gap <= COLLISION_GAP_THRESHOLD) {
++            inCollision_  = true;
++            collisionFlag = 1;
++        }
++    } else {
++        stoppedSince_ = -1;
++        inCollision_  = false;
++    }
++
++    int tlsViolationEvent = 0;
++    int pedestrianCollisionEvent = 0;
++    int cyclistCollisionEvent = 0;
++    int activeTransportCollisionEvent = 0;
++    updateTlsObservation(tlsViolationEvent);
++    updateActiveTransportRisk(pedestrianCollisionEvent,
++                              cyclistCollisionEvent,
++                              activeTransportCollisionEvent);
++
++    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++    //  Write one consolidated row per vehicle per step
++    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++    if (timeseriesFile && timeseriesFile->is_open()) {
++        *timeseriesFile
++            << std::fixed << std::setprecision(4)
++            << getCurrentRunCsvPrefix()
++            << currentTime              << ","
++            << csvEscape(vehicleId)     << ","
++            << egoIsCav                 << ","
++            << "veh_av"                 << ","   // vehicle_type â€” CAV
++            << speed                    << ","
++            << acceleration             << ","
++            << (gap < 0 ? -1.0 : gap)  << ","   // -1 = no leader
++            << csvEscape(leaderId)      << ","   // empty = no leader
++            << leaderIsCav              << ","
++            << ttc                      << ","   // -1 = no TTC risk
++            << brakingDist              << ","
++            << hardBrakeFlag            << ","
++            << emergencyBrakeFlag       << ","
++            << collisionFlag            << ","
++            << tlsViolationEvent        << ","
++            << pedestrianCollisionEvent << ","
++            << cyclistCollisionEvent    << ","
++            << activeTransportCollisionEvent << ","
++            << 1                              // involves_cav=1: this vehicle IS a CAV
++            << "\n";
++        timeseriesFile->flush();
++    }
++
++    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++    //  Original WSM crash-alert logic (unchanged)
++    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++    if (speed < 1) {
++        if (simTime() - lastDroveAt >= 10 && !sentMessage) {
+             findHost()->getDisplayString().setTagArg("i", 1, "red");
+             sentMessage = true;
+-
+             TraCIDemo11pMessage* wsm = new TraCIDemo11pMessage();
+             populateWSM(wsm);
+             wsm->setDemoData(mobility->getRoadId().c_str());
+-
+-            // host is standing still due to crash
+             if (dataOnSch) {
+                 startService(Channel::sch2, 42, "Traffic Information Service");
+-                // started service and server advertising, schedule message to self to send later
+                 scheduleAt(computeAsynchronousSendingTime(1, ChannelType::service), wsm);
+-            }
+-            else {
+-                // send right away on CCH, because channel switching is disabled
++            } else {
+                 sendDown(wsm);
+             }
+         }
+-    }
+-    else {
++    } else {
+         lastDroveAt = simTime();
+     }
+ }
++
++// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++//  onWSA
++// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++void TraCIDemo11p::onWSA(DemoServiceAdvertisment* wsa)
++{
++    if (currentSubscribedServiceId == -1) {
++        mac->changeServiceChannel(static_cast<Channel>(wsa->getTargetChannel()));
++        currentSubscribedServiceId = wsa->getPsid();
++        if (currentOfferedServiceId != wsa->getPsid()) {
++            stopService();
++            startService(static_cast<Channel>(wsa->getTargetChannel()),
++                         wsa->getPsid(), "Mirrored Traffic Service");
++        }
++    }
++}
++
++// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++//  onWSM
++//  BASELINE behaviour: react to ALL messages
++//  immediately â€” zero authentication delay.
++//  SPaT messages â†’ applySpat() called right now.
++//  Rerouting WSMs â†’ changeRoute() called right now.
++// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++void TraCIDemo11p::onWSM(BaseFrame1609_4* frame)
++{
++    TraCIDemo11pMessage* wsm = check_and_cast<TraCIDemo11pMessage*>(frame);
++    std::string data = wsm->getDemoData();
++
++    try {
++        // â”€â”€ SPaT message? â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++        SpatPayload spat;
++        if (SpatPayload::parse(data, spat)) {
++            applySpat(spat);
++            return;
++        }
++
++        // â”€â”€ Regular rerouting WSM â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++        findHost()->getDisplayString().setTagArg("i", 1, "green");
++        if (mobility->getRoadId()[0] != ':')
++            traciVehicle->changeRoute(data, 9999);
++        if (!sentMessage) {
++            sentMessage = true;
++            wsm->setSenderAddress(myId);
++            wsm->setSerial(3);
++            scheduleAt(simTime() + 2 + uniform(0.01, 0.2), wsm->dup());
++        }
++    } catch (const cRuntimeError& e) {
++        EV_WARN << "[TraCIDemo11p] Vehicle left simulation â€” discarding WSM. ("
++                << e.what() << ")\n";
++    } catch (const std::exception& e) {
++        EV_WARN << "[TraCIDemo11p] Discarding WSM for departed vehicle. ("
++                << e.what() << ")\n";
++    } catch (...) {
++        EV_WARN << "[TraCIDemo11p] Discarding WSM (unknown error)\n";
++    }
++}
++
++// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++//  applySpat
++//  Issues speed commands to SUMO in response to
++//  a SPaT message.  Called immediately in baseline
++//  (TraCIDemo11p); subclasses that model verification
++//  overhead call it after their delay - that difference is the metric.
++// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++void TraCIDemo11p::applySpat(const SpatPayload& spat)
++{
++    if (!isVehicleActive_) return;
++
++    recordPdrDelivery(false, simTime().dbl());
++
++    spatPhase_ = spat.phase;
++    double mySpeed = 0.0;
++    try { mySpeed = traciVehicle->getSpeed(); } catch (...) { return; }
++
++    std::string myId;
++    try { myId = mobility->getExternalId(); } catch (...) { return; }
++
++    // SUMO already stops vehicles at red lights via its own TLS logic.
++    // We do NOT call setSpeed() â€” it corrupts activeVehicleCount.
++    // Baseline delay is 0 â€” vehicle acts on SPaT instantly on receipt.
++    // extra_distance_m = 0 in baseline (no auth overhead).
++    double extraDist = 0.0;  // baseline: zero delay, zero extra distance
++
++    EV_INFO << "[TraCIDemo11p] SPaT phase=" << spat.phase
++            << " acknowledged instantly by " << myId << " (baseline)\n";
++
++    // Write to spat_response.csv - same columns for every variant
++    // configured_delay=0, actual_delay=0, extra_distance=0 for baseline
++    if (s_spatResponseFile.is_open()) {
++        long stepAttempts = getLoggedStepAttempts(false, simTime().dbl());
++        long stepDeliveries = getLoggedStepDeliveries(false, simTime().dbl());
++        double stepPdr = getLoggedStepPdr(false, simTime().dbl());
++        s_spatResponseFile << std::fixed << std::setprecision(6)
++            << getCurrentRunCsvPrefix()
++            << myId              << ","
++            << spat.tlsId        << ","
++            << spat.phase        << ","
++            << spat.timeToChange << ","
++            << spat.timeSent     << ","   // time_sent_s â€” stamped at RSU sendDown()
++            << simTime().dbl()   << ","   // time_received = time_acted (no delay)
++            << simTime().dbl()   << ","   // time_acted
++            << mySpeed           << ","
++            << 0.0               << ","   // configured_delay = 0
++            << 0.0               << ","   // actual_delay = 0
++            << extraDist         << ","   // extra_distance_m = 0
++            << "BASELINE"        << ","
++            << stepAttempts      << ","
++            << stepDeliveries    << ","
++            << stepPdr           << "\n";
++        s_spatResponseFile.flush();
++    }
++}
++
++// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++//  handleSelfMsg
++// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
++void TraCIDemo11p::handleSelfMsg(cMessage* msg)
++{
++    if (TraCIDemo11pMessage* wsm = dynamic_cast<TraCIDemo11pMessage*>(msg)) {
++        sendDown(wsm->dup());
++        wsm->setSerial(wsm->getSerial() + 1);
++        if (wsm->getSerial() >= 3) {
++            stopService();
++            delete wsm;
++        } else {
++            scheduleAt(simTime() + 1, wsm);
++        }
++    } else {
++        DemoBaseApplLayer::handleSelfMsg(msg);
++    }
++}
++
++
+--- a/src/veins/modules/application/traci/TraCIDemo11p.h
++++ b/src/veins/modules/application/traci/TraCIDemo11p.h
+@@ -1,60 +1,89 @@
+-//
+-// Copyright (C) 2006-2011 Christoph Sommer <christoph.sommer@uibk.ac.at>
+-//
+-// Documentation for these modules is at http://veins.car2x.org/
+-//
+-// SPDX-License-Identifier: GPL-2.0-or-later
+-//
+-// This program is free software; you can redistribute it and/or modify
+-// it under the terms of the GNU General Public License as published by
+-// the Free Software Foundation; either version 2 of the License, or
+-// (at your option) any later version.
+-//
+-// This program is distributed in the hope that it will be useful,
+-// but WITHOUT ANY WARRANTY; without even the implied warranty of
+-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-// GNU General Public License for more details.
+-//
+-// You should have received a copy of the GNU General Public License
+-// along with this program; if not, write to the Free Software
+-// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+-//
+-
+ #pragma once
+ 
+ #include "veins/modules/application/ieee80211p/DemoBaseApplLayer.h"
++#include "SpatMessage.h"
++#include <fstream>
++#include <map>
++#include <set>
++#include <string>
++#include <utility>
+ 
+ namespace veins {
+ 
+-/**
+- * @brief
+- * A tutorial demo for TraCI. When the car is stopped for longer than 10 seconds
+- * it will send a message out to other cars containing the blocked road id.
+- * Receiving cars will then trigger a reroute via TraCI.
+- * When channel switching between SCH and CCH is enabled on the MAC, the message is
+- * instead send out on a service channel following a Service Advertisement
+- * on the CCH.
+- *
+- * @author Christoph Sommer : initial DemoApp
+- * @author David Eckhoff : rewriting, moving functionality to DemoBaseApplLayer, adding WSA
+- *
+- */
+-
+ class VEINS_API TraCIDemo11p : public DemoBaseApplLayer {
+ public:
++    using DemoBaseApplLayer::receiveSignal;
+     void initialize(int stage) override;
++    void finish() override;
+ 
+ protected:
+     simtime_t lastDroveAt;
+     bool sentMessage;
+     int currentSubscribedServiceId;
+ 
+-protected:
+-    void onWSM(BaseFrame1609_4* wsm) override;
+-    void onWSA(DemoServiceAdvertisment* wsa) override;
++    // ── Acceleration tracking ──────────────────────────────────────
++    double    prevSpeed;
++    simtime_t prevTime;
+ 
++    // ── Single consolidated CSV stream (shared across all vehicles) ─
++    // Points at the module-level static ofstream. Never delete.
++    std::ofstream* timeseriesFile = nullptr;
++
++    // ── Per-vehicle braking episode state ─────────────────────────
++    bool   inBrakingEpisode_     = false;
++    double brakeEpisodeDist_     = 0.0;   // Euclidean dist since episode start
++    double brakeEpisodeMaxDecel_ = 0.0;   // worst decel seen this episode
++    double brakeLastX_           = 0.0;   // XY at previous step
++    double brakeLastY_           = 0.0;
++    bool   hardBrakeFired_       = false; // fired once per episode
++    bool   emergencyBrakeFired_  = false; // fired once per episode
++
++    // ── Per-vehicle collision state ────────────────────────────────
++    bool      inCollision_  = false;
++    simtime_t stoppedSince_ = -1;  // simtime when speed first < threshold
++    bool      actualCollision_ = false;
++    bool      tlsViolationLatched_ = false;
++    bool      tlsViolationActive_ = false;
++    bool      pedCollisionLatched_ = false;
++    bool      bikeCollisionLatched_ = false;
++    std::string lastRoadId_;
++    std::string lastObservedTlsId_;
++    char        lastObservedTlsSignal_ = 'U';
++    double      lastObservedTlsDistance_ = -1.0;
++
++    // ── SPaT speed control (baseline: instant reaction) ───────────
++    char   spatPhase_         = 'U';
++    bool   spatSpeedOverride_ = false;
++    double spatNormalMaxSpeed_ = 0.0;
++    double ttcLookaheadDistance_ = 50.0;
++
++    // ── Lifecycle guard ───────────────────────────────────────────
++    // Set false as FIRST action in finish(). Prevents TraCI calls
++    // on a vehicle SUMO has already removed.
++    bool   isVehicleActive_   = true;
++
++    void applySpat(const SpatPayload& spat);
++
++    // ── Legacy fields (kept for compatibility) ─────────────────────
++    bool prevBraking;
++    double prevTlsState;
++    std::string prevTlsId;
++
++    void onWSA(DemoServiceAdvertisment* wsa) override;
++    void onWSM(BaseFrame1609_4* frame) override;
+     void handleSelfMsg(cMessage* msg) override;
+     void handlePositionUpdate(cObject* obj) override;
++    void receiveSignal(cComponent* source, simsignal_t signalID, bool value, cObject* details) override;
++
++    double getLeaderGap();
++    double getLeaderLookaheadDistance() const;
++    std::pair<std::string, double> getLeaderInfo() const;
++    double computeTTC(double speed, double leaderSpeed, double gap);
++    void   initCSVFiles();
++    void updateTlsObservation(int& tlsViolationEvent);
++    void updateActiveTransportRisk(int& pedCollisionEvent,
++                                   int& bikeCollisionEvent,
++                                   int& activeTransportCollisionEvent);
+ };
+ 
+ } // namespace veins
+--- a/src/veins/modules/application/traci/TraCIDemo11p.ned
++++ b/src/veins/modules/application/traci/TraCIDemo11p.ned
+@@ -25,6 +25,10 @@
+ 
+ simple TraCIDemo11p extends DemoBaseApplLayer
+ {
++    parameters:
++        double ttcLookaheadDistance @unit(m) = default(50m);
++            // Leader search distance for TTC/gap logging.
++            // This is a fixed forward search horizon in metres.
+     @class(veins::TraCIDemo11p);
+     @display("i=block/app2");
+ }
+--- a/src/veins/modules/application/traci/TraCIDemoTrafficLightApp.cc
++++ b/src/veins/modules/application/traci/TraCIDemoTrafficLightApp.cc
+@@ -38,6 +38,7 @@
+ 
+ void TraCIDemoTrafficLightApp::initialize(int stage)
+ {
++    DemoBaseApplLayer::initialize(stage);
+ }
+ 
+ void TraCIDemoTrafficLightApp::onBSM(DemoSafetyMessage* bsm)
+--- a/src/veins/modules/mobility/traci/TraCICommandInterface.cc
++++ b/src/veins/modules/mobility/traci/TraCICommandInterface.cc
+@@ -155,6 +155,14 @@
+     uint8_t variableId = VAR_MAXSPEED;
+     uint8_t variableType = TYPE_DOUBLE;
+     TraCIBuffer buf = traci->connection.query(CMD_SET_VEHICLE_VARIABLE, TraCIBuffer() << variableId << nodeId << variableType << speed);
++    ASSERT(buf.eof());
++}
++
++void TraCICommandInterface::Vehicle::setType(const std::string& typeId)
++{
++    uint8_t variableId = VAR_TYPE;
++    uint8_t variableType = TYPE_STRING;
++    TraCIBuffer buf = traci->connection.query(CMD_SET_VEHICLE_VARIABLE, TraCIBuffer() << variableId << nodeId << variableType << typeId);
+     ASSERT(buf.eof());
+ }
+ 
+--- a/src/veins/modules/mobility/traci/TraCICommandInterface.h
++++ b/src/veins/modules/mobility/traci/TraCICommandInterface.h
+@@ -158,6 +158,7 @@
+         void setSpeedMode(int32_t bitset);
+         void setSpeed(double speed);
+         void setMaxSpeed(double speed);
++        void setType(const std::string& typeId);
+         TraCIColor getColor();
+         void setColor(const TraCIColor& color);
+         void slowDown(double speed, simtime_t time);
+--- a/subprojects/veins_inet/examples/veins_inet/Scenario.ned
++++ b/subprojects/veins_inet/examples/veins_inet/Scenario.ned
+@@ -22,18 +22,10 @@
+ 
+ package org.car2x.veins.subprojects.veins_inet.examples.veins_inet;
+ 
+-//#if INET_VERSION < 0x0403
+-import inet.physicallayer*.ieee80211.packetlevel.Ieee80211DimensionalRadioMedium;
+-//#else
+-import inet.physicallayer*.wireless.ieee80211.packetlevel.Ieee80211DimensionalRadioMedium;
+-//#endif
++import inet.physicallayer.wireless.ieee80211.packetlevel.Ieee80211DimensionalRadioMedium;
+ import org.car2x.veins.subprojects.veins_inet.VeinsInetCar;
+ import org.car2x.veins.subprojects.veins_inet.VeinsInetManager;
+-//#if INET_VERSION < 0x0403
+-import inet.visualizer*.integrated.IntegratedVisualizer;
+-//#else
+-import inet.visualizer*.common.IntegratedVisualizer;
+-//#endif
++import inet.visualizer.common.IntegratedVisualizer;
+ import inet.environment.common.PhysicalEnvironment;
+ import org.car2x.veins.visualizer.roads.RoadsCanvasVisualizer;
+ import org.car2x.veins.visualizer.roads.RoadsOsgVisualizer;
+--- a/subprojects/veins_inet/src/makefrag
++++ b/subprojects/veins_inet/src/makefrag
+@@ -55,9 +55,21 @@
+   endif
+ endif
+ 
++#
++# macOS install_name_tool may need to grow load commands after linking.
++# Reserve enough header space so relinking does not fail on Apple Silicon.
++#
++ifneq (,$(findstring macos,$(PLATFORM)))
++  LDFLAGS += -Wl,-headerpad_max_install_names
++endif
+ 
++
+ #
+ # Use the new message compiler introduced in OMNeT++ 5.3
+ #
+ MSGC:=$(MSGC) --msg6
+ 
++# Fix INET include path: opp_makemake may record /src/debug/src which does not exist.
++# Replace it with the real INET src directory. Safe to apply even if already correct.
++INCLUDE_PATH := $(subst $(INET_PROJ)/src/debug/src,$(INET_PROJ)/src,$(INCLUDE_PATH))
++MSGCOPTS    := $(subst $(INET_PROJ)/src/debug/src,$(INET_PROJ)/src,$(MSGCOPTS))
+--- a/subprojects/veins_inet/src/veins_inet/VeinsInetApplicationBase.cc
++++ b/subprojects/veins_inet/src/veins_inet/VeinsInetApplicationBase.cc
+@@ -22,12 +22,13 @@
+ 
+ //
+ // Veins "application layer" module for the INET Framework
+-// Based on inet::UdpBasicApp of INET Framework v4.0.0
++// Simplified for dynamically spawned TraCI hosts: avoid ApplicationBase
++// lifecycle interactions and bring the UDP socket up explicitly at the
++// final initialization stage.
+ //
+ 
+ #include "veins_inet/VeinsInetApplicationBase.h"
+ 
+-#include "inet/common/lifecycle/ModuleOperations.h"
+ #include "inet/common/ModuleAccess.h"
+ #include "inet/common/packet/Packet.h"
+ #include "inet/common/TagBase_m.h"
+@@ -53,17 +54,11 @@
+ 
+ void VeinsInetApplicationBase::initialize(int stage)
+ {
+-    ApplicationBase::initialize(stage);
++    if (stage != inet::INITSTAGE_LAST) return;
+ 
+-    if (stage == INITSTAGE_LOCAL) {
+-    }
+-}
+-
+-void VeinsInetApplicationBase::handleStartOperation(LifecycleOperation* operation)
+-{
+     mobility = veins::VeinsInetMobilityAccess().get(getParentModule());
+-    traci = mobility->getCommandInterface();
+-    traciVehicle = mobility->getVehicleCommandInterface();
++    traci = mobility ? mobility->getCommandInterface() : nullptr;
++    traciVehicle = mobility ? mobility->getVehicleCommandInterface() : nullptr;
+ 
+     L3AddressResolver().tryResolve("224.0.0.1", destAddress);
+     ASSERT(!destAddress.isUnspecified());
+@@ -83,14 +78,12 @@
+ #endif
+     ASSERT(ie);
+     socket.setMulticastOutputInterface(ie->getInterfaceId());
+-
+-    MulticastGroupList mgl = ift->collectMulticastGroups();
+-    socket.joinLocalMulticastGroups(mgl);
+-
++    socket.setMulticastLoop(false);
++    socket.joinMulticastGroup(destAddress, ie->getInterfaceId());
+     socket.setCallback(this);
+ 
+-    bool ok = startApplication();
+-    ASSERT(ok);
++    started_ = startApplication();
++    ASSERT(started_);
+ }
+ 
+ bool VeinsInetApplicationBase::startApplication()
+@@ -103,22 +96,9 @@
+     return true;
+ }
+ 
+-void VeinsInetApplicationBase::handleStopOperation(LifecycleOperation* operation)
+-{
+-    bool ok = stopApplication();
+-    ASSERT(ok);
+-
+-    socket.close();
+-}
+-
+-void VeinsInetApplicationBase::handleCrashOperation(LifecycleOperation* operation)
+-{
+-    socket.destroy();
+-}
+-
+ void VeinsInetApplicationBase::finish()
+ {
+-    ApplicationBase::finish();
++    if (started_) stopApplication();
+ }
+ 
+ VeinsInetApplicationBase::~VeinsInetApplicationBase()
+@@ -127,22 +107,15 @@
+ 
+ void VeinsInetApplicationBase::refreshDisplay() const
+ {
+-    ApplicationBase::refreshDisplay();
+-
+     char buf[100];
+     sprintf(buf, "okay");
+     getDisplayString().setTagArg("t", 0, buf);
+ }
+ 
+-void VeinsInetApplicationBase::handleMessageWhenUp(cMessage* msg)
++void VeinsInetApplicationBase::handleMessage(cMessage* msg)
+ {
+     if (timerManager.handleMessage(msg)) return;
+ 
+-    if (msg->isSelfMessage()) {
+-        throw cRuntimeError("This module does not use custom self messages");
+-        return;
+-    }
+-
+     socket.processMessage(msg);
+ }
+ 
+@@ -172,9 +145,6 @@
+ 
+ void VeinsInetApplicationBase::socketClosed(UdpSocket* socket)
+ {
+-    if (operationalState == State::STOPPING_OPERATION) {
+-        startActiveOperationExtraTimeOrFinish(-1);
+-    }
+ }
+ 
+ void VeinsInetApplicationBase::timestampPayload(inet::Ptr<inet::Chunk> payload)
+--- a/subprojects/veins_inet/src/veins_inet/VeinsInetApplicationBase.h
++++ b/subprojects/veins_inet/src/veins_inet/VeinsInetApplicationBase.h
+@@ -22,42 +22,40 @@
+ 
+ #pragma once
+ 
++#include <memory>
+ #include <vector>
+ 
+ #include "veins_inet/veins_inet.h"
+ 
+ #include "inet/common/INETDefs.h"
+ 
+-#include "inet/applications/base/ApplicationBase.h"
+ #include "inet/transportlayer/contract/udp/UdpSocket.h"
+ #include "veins_inet/VeinsInetMobility.h"
+ #include "veins/modules/utility/TimerManager.h"
+ 
+ namespace veins {
+ 
+-class VEINS_INET_API VeinsInetApplicationBase : public inet::ApplicationBase, public inet::UdpSocket::ICallback {
++class VEINS_INET_API VeinsInetApplicationBase : public omnetpp::cSimpleModule, public inet::UdpSocket::ICallback {
+ protected:
+-    veins::VeinsInetMobility* mobility;
+-    veins::TraCICommandInterface* traci;
+-    veins::TraCICommandInterface::Vehicle* traciVehicle;
++    veins::VeinsInetMobility* mobility = nullptr;
++    veins::TraCICommandInterface* traci = nullptr;
++    veins::TraCICommandInterface::Vehicle* traciVehicle = nullptr;
+     veins::TimerManager timerManager{this};
+ 
+     inet::L3Address destAddress;
+     const int portNumber = 9001;
+     inet::UdpSocket socket;
++    bool started_ = false;
+ 
+ protected:
+     virtual int numInitStages() const override;
+     virtual void initialize(int stage) override;
+-    virtual void handleStartOperation(inet::LifecycleOperation* doneCallback) override;
++    virtual void handleMessage(omnetpp::cMessage* msg) override;
+     virtual bool startApplication();
+     virtual bool stopApplication();
+-    virtual void handleStopOperation(inet::LifecycleOperation* doneCallback) override;
+-    virtual void handleCrashOperation(inet::LifecycleOperation* doneCallback) override;
+     virtual void finish() override;
+ 
+     virtual void refreshDisplay() const override;
+-    virtual void handleMessageWhenUp(inet::cMessage* msg) override;
+ 
+     virtual void socketDataArrived(inet::UdpSocket* socket, inet::Packet* packet) override;
+     virtual void socketErrorArrived(inet::UdpSocket* socket, inet::Indication* indication) override;
+--- a/subprojects/veins_inet/src/veins_inet/VeinsInetCar.ned
++++ b/subprojects/veins_inet/src/veins_inet/VeinsInetCar.ned
+@@ -31,9 +31,13 @@
+ module VeinsInetCar extends AdhocHost
+ {
+     parameters:
++        // This scenario uses only UDP multicast for PC5-style messaging.
++        // Disabling unused transports trims dynamic host construction cost.
++        hasTcp = default(false);
++        hasSctp = default(false);
++        numLoInterfaces = default(0);
+         @display("i=device/cellphone");
+ 
+     submodules:
+ 
+ }
+-

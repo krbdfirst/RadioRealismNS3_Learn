@@ -1,0 +1,16 @@
+# Python dependencies for 06_analysis/python/
+#
+#   python -m venv .venv && source .venv/bin/activate
+#   pip install -r requirements.txt
+#
+# Python 3.9 or later. The lower bounds are the versions used for the analysis.
+
+numpy>=1.24
+pandas>=2.0
+scipy>=1.10
+scikit-learn>=1.3
+matplotlib>=3.7
+
+# sqlite3, csv, glob, pathlib and argparse are in the standard library.
+# The SUMO tools (xml2csv.py, traceExporter.py) are called from $SUMO_HOME by the
+# FCD export scripts and are not installed through pip.

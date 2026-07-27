@@ -1,0 +1,350 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
+
+    
+    <vType id="veh_human" sigma="0.30" minGap="2.50" speedFactor="normc(1.00,0.08,0.85,1.15)" vClass="passenger" impatience="0.15" laneChangeModel="LC2013" lcCooperative="0.8" lcSpeedGain="0.9" lcKeepRight="1.0" lcAssertive="0.8" jmCrossingGap="7" jmDriveAfterYellowTime="0.2" jmDriveAfterRedTime="0.0" jmDriveRedSpeed="0.0" jmIgnoreKeepClearTime="0" jmIgnoreFoeSpeed="0.5" jmIgnoreFoeProb="0.0" jmSigmaMinor="0.2" carFollowModel="IDM" accel="2.0" decel="4.0" collisionMinGapFactor="1.0" tau="1.8" delta="4" />
+
+    <vType id="veh_av" sigma="0" color="0,0,255" minGap="1.50" speedFactor="normc(1.00,0.01,0.97,1.03)" vClass="passenger" laneChangeModel="LC2013" lcSpeedGain="0.4" lcKeepRight="0.9" lcAssertive="0.4" jmTimegapMinor="1.8" carFollowModel="IDM" accel="3.0" decel="3.5" emergencyDecel="8" collisionMinGapFactor="1.0" tau="0.9" delta="4" lcCooperative="1.0" />
+
+    <vType id="bike" vClass="bicycle" maxSpeed="6.0" accel="1.2" decel="3.0" sigma="0.5" length="1.8" width="0.65" minGap="0.5" />
+
+    <vType id="ped" vClass="pedestrian" maxSpeed="1.4" minGap="0.25" />
+
+    
+    
+    
+    
+    
+
+    
+    <route id="r_0" edges="E8 E1 E2" />
+    
+    <route id="r_1" edges="E8 E1 E7" />
+    
+    <route id="r_2" edges="E8 E1 E14" />
+    
+    <route id="r_3" edges="E8 E1 E9 E9.27 E11" />
+    
+    <route id="r_4" edges="E8 E1 E9 E9.27 E13" />
+    
+    <route id="r_5" edges="E8 E1 E9 E9.27 E15 E15.30" />
+    
+    <route id="r_6" edges="E8 E1 E9 E9.27 E15 13336640" />
+    
+    <route id="r_7" edges="E3 E2" />
+    
+    <route id="r_8" edges="E3 E7" />
+    
+    <route id="r_9" edges="E3 E14" />
+    
+    <route id="r_10" edges="E3 E9 E9.27 E11" />
+    
+    <route id="r_11" edges="E3 E9 E9.27 E13" />
+    
+    <route id="r_12" edges="E3 E9 E9.27 E15 E15.30" />
+    
+    <route id="r_13" edges="E3 E9 E9.27 E15 13336640" />
+    
+    <route id="r_14" edges="E4 E2" />
+    
+    <route id="r_15" edges="E4 E7" />
+    
+    <route id="r_16" edges="E4 E14" />
+    
+    <route id="r_17" edges="E4 E9 E9.27 E11" />
+    
+    <route id="r_18" edges="E4 E9 E9.27 E13" />
+    
+    <route id="r_19" edges="E4 E9 E9.27 E15 E15.30" />
+    
+    <route id="r_20" edges="E4 E9 E9.27 E15 13336640" />
+    
+    <route id="r_21" edges="E10 -E9 -E9.38 E2" />
+    
+    <route id="r_22" edges="E10 -E9 -E9.38 E7" />
+    
+    <route id="r_23" edges="E10 -E9 -E9.38 E14" />
+    
+    <route id="r_24" edges="E10 E11" />
+    
+    <route id="r_25" edges="E10 E13" />
+    
+    <route id="r_26" edges="E10 E15 E15.30" />
+    
+    <route id="r_27" edges="E10 E15 13336640" />
+    
+    <route id="r_28" edges="E12 -E9 -E9.38 E2" />
+    
+    <route id="r_29" edges="E12 -E9 -E9.38 E7" />
+    
+    <route id="r_30" edges="E12 -E9 -E9.38 E14" />
+    
+    <route id="r_31" edges="E12 E11" />
+    
+    <route id="r_32" edges="E12 E13" />
+    
+    <route id="r_33" edges="E12 E15 E15.30" />
+    
+    <route id="r_34" edges="E12 E15 13336640" />
+    
+    <route id="r_35" edges="E17 E17.66 E16 -E9 -E9.38 E2" />
+    
+    <route id="r_36" edges="E17 E17.66 E16 -E9 -E9.38 E7" />
+    
+    <route id="r_37" edges="E17 E17.66 E16 -E9 -E9.38 E14" />
+    
+    <route id="r_38" edges="E17 E17.66 E16 E11" />
+    
+    <route id="r_39" edges="E17 E17.66 E16 E13" />
+    
+    <route id="r_40" edges="E17 E17.66 E16 E15 E15.30" />
+    
+    <route id="r_41" edges="E17 E17.66 E16 E15 13336640" />
+
+    
+    <flow id="fh_00" type="veh_human" route="r_0" begin="0" end="3600" vehsPerHour="17.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_01" type="veh_human" route="r_1" begin="0" end="3600" vehsPerHour="13.0000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_02" type="veh_human" route="r_2" begin="0" end="3600" vehsPerHour="8.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_03" type="veh_human" route="r_3" begin="0" end="3600" vehsPerHour="17.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_04" type="veh_human" route="r_4" begin="0" end="3600" vehsPerHour="13.0000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_05" type="veh_human" route="r_5" begin="0" end="3600" vehsPerHour="10.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_06" type="veh_human" route="r_6" begin="0" end="3600" vehsPerHour="7.0000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_07" type="veh_human" route="r_7" begin="0" end="3600" vehsPerHour="18.0000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_08" type="veh_human" route="r_8" begin="0" end="3600" vehsPerHour="11.0000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_09" type="veh_human" route="r_9" begin="0" end="3600" vehsPerHour="7.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_10" type="veh_human" route="r_10" begin="0" end="3600" vehsPerHour="14.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_11" type="veh_human" route="r_11" begin="0" end="3600" vehsPerHour="11.0000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_12" type="veh_human" route="r_12" begin="0" end="3600" vehsPerHour="7.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_13" type="veh_human" route="r_13" begin="0" end="3600" vehsPerHour="3.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_14" type="veh_human" route="r_14" begin="0" end="3600" vehsPerHour="16.0000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_15" type="veh_human" route="r_15" begin="0" end="3600" vehsPerHour="21.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_16" type="veh_human" route="r_16" begin="0" end="3600" vehsPerHour="5.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_17" type="veh_human" route="r_17" begin="0" end="3600" vehsPerHour="26.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_18" type="veh_human" route="r_18" begin="0" end="3600" vehsPerHour="16.0000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_19" type="veh_human" route="r_19" begin="0" end="3600" vehsPerHour="13.0000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_20" type="veh_human" route="r_20" begin="0" end="3600" vehsPerHour="8.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_21" type="veh_human" route="r_21" begin="0" end="3600" vehsPerHour="19.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_22" type="veh_human" route="r_22" begin="0" end="3600" vehsPerHour="14.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_23" type="veh_human" route="r_23" begin="0" end="3600" vehsPerHour="14.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_24" type="veh_human" route="r_24" begin="0" end="3600" vehsPerHour="9.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_25" type="veh_human" route="r_25" begin="0" end="3600" vehsPerHour="9.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_26" type="veh_human" route="r_26" begin="0" end="3600" vehsPerHour="17.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_27" type="veh_human" route="r_27" begin="0" end="3600" vehsPerHour="11.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_28" type="veh_human" route="r_28" begin="0" end="3600" vehsPerHour="14.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_29" type="veh_human" route="r_29" begin="0" end="3600" vehsPerHour="11.0000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_30" type="veh_human" route="r_30" begin="0" end="3600" vehsPerHour="11.0000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_31" type="veh_human" route="r_31" begin="0" end="3600" vehsPerHour="11.0000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_32" type="veh_human" route="r_32" begin="0" end="3600" vehsPerHour="7.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_33" type="veh_human" route="r_33" begin="0" end="3600" vehsPerHour="11.0000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_34" type="veh_human" route="r_34" begin="0" end="3600" vehsPerHour="7.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_35" type="veh_human" route="r_35" begin="0" end="3600" vehsPerHour="7.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_36" type="veh_human" route="r_36" begin="0" end="3600" vehsPerHour="7.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_37" type="veh_human" route="r_37" begin="0" end="3600" vehsPerHour="5.0000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_38" type="veh_human" route="r_38" begin="0" end="3600" vehsPerHour="9.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_39" type="veh_human" route="r_39" begin="0" end="3600" vehsPerHour="7.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_40" type="veh_human" route="r_40" begin="0" end="3600" vehsPerHour="8.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fh_41" type="veh_human" route="r_41" begin="0" end="3600" vehsPerHour="3.5000" departLane="best" departSpeed="max" departPos="base" />
+
+    
+    <flow id="fc_00" type="veh_av" route="r_0" begin="0" end="3600" vehsPerHour="17.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_01" type="veh_av" route="r_1" begin="0" end="3600" vehsPerHour="13.0000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_02" type="veh_av" route="r_2" begin="0" end="3600" vehsPerHour="8.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_03" type="veh_av" route="r_3" begin="0" end="3600" vehsPerHour="17.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_04" type="veh_av" route="r_4" begin="0" end="3600" vehsPerHour="13.0000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_05" type="veh_av" route="r_5" begin="0" end="3600" vehsPerHour="10.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_06" type="veh_av" route="r_6" begin="0" end="3600" vehsPerHour="7.0000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_07" type="veh_av" route="r_7" begin="0" end="3600" vehsPerHour="18.0000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_08" type="veh_av" route="r_8" begin="0" end="3600" vehsPerHour="11.0000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_09" type="veh_av" route="r_9" begin="0" end="3600" vehsPerHour="7.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_10" type="veh_av" route="r_10" begin="0" end="3600" vehsPerHour="14.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_11" type="veh_av" route="r_11" begin="0" end="3600" vehsPerHour="11.0000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_12" type="veh_av" route="r_12" begin="0" end="3600" vehsPerHour="7.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_13" type="veh_av" route="r_13" begin="0" end="3600" vehsPerHour="3.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_14" type="veh_av" route="r_14" begin="0" end="3600" vehsPerHour="16.0000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_15" type="veh_av" route="r_15" begin="0" end="3600" vehsPerHour="21.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_16" type="veh_av" route="r_16" begin="0" end="3600" vehsPerHour="5.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_17" type="veh_av" route="r_17" begin="0" end="3600" vehsPerHour="26.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_18" type="veh_av" route="r_18" begin="0" end="3600" vehsPerHour="16.0000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_19" type="veh_av" route="r_19" begin="0" end="3600" vehsPerHour="13.0000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_20" type="veh_av" route="r_20" begin="0" end="3600" vehsPerHour="8.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_21" type="veh_av" route="r_21" begin="0" end="3600" vehsPerHour="19.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_22" type="veh_av" route="r_22" begin="0" end="3600" vehsPerHour="14.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_23" type="veh_av" route="r_23" begin="0" end="3600" vehsPerHour="14.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_24" type="veh_av" route="r_24" begin="0" end="3600" vehsPerHour="9.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_25" type="veh_av" route="r_25" begin="0" end="3600" vehsPerHour="9.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_26" type="veh_av" route="r_26" begin="0" end="3600" vehsPerHour="17.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_27" type="veh_av" route="r_27" begin="0" end="3600" vehsPerHour="11.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_28" type="veh_av" route="r_28" begin="0" end="3600" vehsPerHour="14.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_29" type="veh_av" route="r_29" begin="0" end="3600" vehsPerHour="11.0000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_30" type="veh_av" route="r_30" begin="0" end="3600" vehsPerHour="11.0000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_31" type="veh_av" route="r_31" begin="0" end="3600" vehsPerHour="11.0000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_32" type="veh_av" route="r_32" begin="0" end="3600" vehsPerHour="7.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_33" type="veh_av" route="r_33" begin="0" end="3600" vehsPerHour="11.0000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_34" type="veh_av" route="r_34" begin="0" end="3600" vehsPerHour="7.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_35" type="veh_av" route="r_35" begin="0" end="3600" vehsPerHour="7.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_36" type="veh_av" route="r_36" begin="0" end="3600" vehsPerHour="7.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_37" type="veh_av" route="r_37" begin="0" end="3600" vehsPerHour="5.0000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_38" type="veh_av" route="r_38" begin="0" end="3600" vehsPerHour="9.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_39" type="veh_av" route="r_39" begin="0" end="3600" vehsPerHour="7.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_40" type="veh_av" route="r_40" begin="0" end="3600" vehsPerHour="8.5000" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fc_41" type="veh_av" route="r_41" begin="0" end="3600" vehsPerHour="3.5000" departLane="best" departSpeed="max" departPos="base" />
+
+    
+    <flow id="fb_00" type="bike" route="r_0" begin="0" end="3600" vehsPerHour="3" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_01" type="bike" route="r_1" begin="0" end="3600" vehsPerHour="2" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_02" type="bike" route="r_2" begin="0" end="3600" vehsPerHour="2" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_03" type="bike" route="r_3" begin="0" end="3600" vehsPerHour="4" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_04" type="bike" route="r_4" begin="0" end="3600" vehsPerHour="3" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_05" type="bike" route="r_5" begin="0" end="3600" vehsPerHour="2" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_06" type="bike" route="r_6" begin="0" end="3600" vehsPerHour="1" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_07" type="bike" route="r_7" begin="0" end="3600" vehsPerHour="3" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_08" type="bike" route="r_8" begin="0" end="3600" vehsPerHour="2" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_09" type="bike" route="r_9" begin="0" end="3600" vehsPerHour="2" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_10" type="bike" route="r_10" begin="0" end="3600" vehsPerHour="3" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_11" type="bike" route="r_11" begin="0" end="3600" vehsPerHour="2" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_12" type="bike" route="r_12" begin="0" end="3600" vehsPerHour="2" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_13" type="bike" route="r_13" begin="0" end="3600" vehsPerHour="1" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_14" type="bike" route="r_14" begin="0" end="3600" vehsPerHour="3" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_15" type="bike" route="r_15" begin="0" end="3600" vehsPerHour="4" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_16" type="bike" route="r_16" begin="0" end="3600" vehsPerHour="1" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_17" type="bike" route="r_17" begin="0" end="3600" vehsPerHour="5" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_18" type="bike" route="r_18" begin="0" end="3600" vehsPerHour="3" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_19" type="bike" route="r_19" begin="0" end="3600" vehsPerHour="2" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_20" type="bike" route="r_20" begin="0" end="3600" vehsPerHour="2" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_21" type="bike" route="r_21" begin="0" end="3600" vehsPerHour="3" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_22" type="bike" route="r_22" begin="0" end="3600" vehsPerHour="2" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_23" type="bike" route="r_23" begin="0" end="3600" vehsPerHour="2" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_24" type="bike" route="r_24" begin="0" end="3600" vehsPerHour="2" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_25" type="bike" route="r_25" begin="0" end="3600" vehsPerHour="2" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_26" type="bike" route="r_26" begin="0" end="3600" vehsPerHour="3" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_27" type="bike" route="r_27" begin="0" end="3600" vehsPerHour="2" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_28" type="bike" route="r_28" begin="0" end="3600" vehsPerHour="2" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_29" type="bike" route="r_29" begin="0" end="3600" vehsPerHour="2" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_30" type="bike" route="r_30" begin="0" end="3600" vehsPerHour="2" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_31" type="bike" route="r_31" begin="0" end="3600" vehsPerHour="2" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_32" type="bike" route="r_32" begin="0" end="3600" vehsPerHour="2" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_33" type="bike" route="r_33" begin="0" end="3600" vehsPerHour="2" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_34" type="bike" route="r_34" begin="0" end="3600" vehsPerHour="1" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_35" type="bike" route="r_35" begin="0" end="3600" vehsPerHour="1" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_36" type="bike" route="r_36" begin="0" end="3600" vehsPerHour="1" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_37" type="bike" route="r_37" begin="0" end="3600" vehsPerHour="1" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_38" type="bike" route="r_38" begin="0" end="3600" vehsPerHour="2" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_39" type="bike" route="r_39" begin="0" end="3600" vehsPerHour="1" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_40" type="bike" route="r_40" begin="0" end="3600" vehsPerHour="2" departLane="best" departSpeed="max" departPos="base" />
+    <flow id="fb_41" type="bike" route="r_41" begin="0" end="3600" vehsPerHour="1" departLane="best" departSpeed="max" departPos="base" />
+
+    
+    <personFlow id="pf_00" type="ped" begin="0" end="3600" personsPerHour="8">
+        <personTrip from="E8" to="E2" />
+    </personFlow>
+    <personFlow id="pf_01" type="ped" begin="0" end="3600" personsPerHour="6">
+        <personTrip from="E8" to="E7" />
+    </personFlow>
+    <personFlow id="pf_02" type="ped" begin="0" end="3600" personsPerHour="5">
+        <personTrip from="E8" to="E14" />
+    </personFlow>
+    <personFlow id="pf_03" type="ped" begin="0" end="3600" personsPerHour="8">
+        <personTrip from="E8" to="E11" />
+    </personFlow>
+    <personFlow id="pf_04" type="ped" begin="0" end="3600" personsPerHour="6">
+        <personTrip from="E8" to="E13" />
+    </personFlow>
+    <personFlow id="pf_05" type="ped" begin="0" end="3600" personsPerHour="5">
+        <personTrip from="E8" to="E15.30" />
+    </personFlow>
+    <personFlow id="pf_06" type="ped" begin="0" end="3600" personsPerHour="9">
+        <personTrip from="E3" to="E2" />
+    </personFlow>
+    <personFlow id="pf_07" type="ped" begin="0" end="3600" personsPerHour="7">
+        <personTrip from="E3" to="E7" />
+    </personFlow>
+    <personFlow id="pf_08" type="ped" begin="0" end="3600" personsPerHour="5">
+        <personTrip from="E3" to="E14" />
+    </personFlow>
+    <personFlow id="pf_09" type="ped" begin="0" end="3600" personsPerHour="8">
+        <personTrip from="E3" to="E11" />
+    </personFlow>
+    <personFlow id="pf_10" type="ped" begin="0" end="3600" personsPerHour="6">
+        <personTrip from="E3" to="E13" />
+    </personFlow>
+    <personFlow id="pf_11" type="ped" begin="0" end="3600" personsPerHour="5">
+        <personTrip from="E3" to="E15.30" />
+    </personFlow>
+    <personFlow id="pf_12" type="ped" begin="0" end="3600" personsPerHour="6">
+        <personTrip from="E4" to="E2" />
+    </personFlow>
+    <personFlow id="pf_13" type="ped" begin="0" end="3600" personsPerHour="8">
+        <personTrip from="E4" to="E7" />
+    </personFlow>
+    <personFlow id="pf_14" type="ped" begin="0" end="3600" personsPerHour="4">
+        <personTrip from="E4" to="E14" />
+    </personFlow>
+    <personFlow id="pf_15" type="ped" begin="0" end="3600" personsPerHour="7">
+        <personTrip from="E4" to="E11" />
+    </personFlow>
+    <personFlow id="pf_16" type="ped" begin="0" end="3600" personsPerHour="5">
+        <personTrip from="E4" to="E13" />
+    </personFlow>
+    <personFlow id="pf_17" type="ped" begin="0" end="3600" personsPerHour="4">
+        <personTrip from="E4" to="E15.30" />
+    </personFlow>
+    <personFlow id="pf_18" type="ped" begin="0" end="3600" personsPerHour="7">
+        <personTrip from="E10" to="E2" />
+    </personFlow>
+    <personFlow id="pf_19" type="ped" begin="0" end="3600" personsPerHour="6">
+        <personTrip from="E10" to="E7" />
+    </personFlow>
+    <personFlow id="pf_20" type="ped" begin="0" end="3600" personsPerHour="5">
+        <personTrip from="E10" to="E14" />
+    </personFlow>
+    <personFlow id="pf_21" type="ped" begin="0" end="3600" personsPerHour="6">
+        <personTrip from="E10" to="E11" />
+    </personFlow>
+    <personFlow id="pf_22" type="ped" begin="0" end="3600" personsPerHour="5">
+        <personTrip from="E10" to="E13" />
+    </personFlow>
+    <personFlow id="pf_23" type="ped" begin="0" end="3600" personsPerHour="4">
+        <personTrip from="E10" to="E15.30" />
+    </personFlow>
+    <personFlow id="pf_24" type="ped" begin="0" end="3600" personsPerHour="6">
+        <personTrip from="E12" to="E2" />
+    </personFlow>
+    <personFlow id="pf_25" type="ped" begin="0" end="3600" personsPerHour="5">
+        <personTrip from="E12" to="E7" />
+    </personFlow>
+    <personFlow id="pf_26" type="ped" begin="0" end="3600" personsPerHour="4">
+        <personTrip from="E12" to="E14" />
+    </personFlow>
+    <personFlow id="pf_27" type="ped" begin="0" end="3600" personsPerHour="5">
+        <personTrip from="E12" to="E11" />
+    </personFlow>
+    <personFlow id="pf_28" type="ped" begin="0" end="3600" personsPerHour="4">
+        <personTrip from="E12" to="E13" />
+    </personFlow>
+    <personFlow id="pf_29" type="ped" begin="0" end="3600" personsPerHour="3">
+        <personTrip from="E12" to="E15.30" />
+    </personFlow>
+    <personFlow id="pf_30" type="ped" begin="0" end="3600" personsPerHour="4">
+        <personTrip from="E17" to="E2" />
+    </personFlow>
+    <personFlow id="pf_31" type="ped" begin="0" end="3600" personsPerHour="4">
+        <personTrip from="E17" to="E7" />
+    </personFlow>
+    <personFlow id="pf_32" type="ped" begin="0" end="3600" personsPerHour="3">
+        <personTrip from="E17" to="E14" />
+    </personFlow>
+    <personFlow id="pf_33" type="ped" begin="0" end="3600" personsPerHour="4">
+        <personTrip from="E17" to="E11" />
+    </personFlow>
+    <personFlow id="pf_34" type="ped" begin="0" end="3600" personsPerHour="3">
+        <personTrip from="E17" to="E13" />
+    </personFlow>
+    <personFlow id="pf_35" type="ped" begin="0" end="3600" personsPerHour="3">
+        <personTrip from="E17" to="E15.30" />
+    </personFlow>
+
+    
+    <vehicle id="target_cav" type="veh_av" route="r_29" depart="100.00" departLane="best" departSpeed="max" color="0,255,0" />
+    <vehicle id="attacker_car" type="veh_human" route="r_29" depart="100.01" departLane="best" departSpeed="max" color="255,0,0" />
+
+</routes>

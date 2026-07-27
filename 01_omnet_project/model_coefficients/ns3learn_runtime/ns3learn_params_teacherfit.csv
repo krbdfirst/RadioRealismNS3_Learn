@@ -1,0 +1,10 @@
+key,value
+half_duplex,0.58
+capture,0.1761
+collision_L,0.9254
+collision_k,0.05015
+collision_x0,57.93
+noise_figure_db,7.0
+bandwidth_hz,18720000.0
+tx_power_dbm,23.0
+fc_ghz,5.9

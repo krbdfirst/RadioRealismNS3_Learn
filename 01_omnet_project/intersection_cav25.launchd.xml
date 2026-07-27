@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+
+<!-- Veins launch config — 25% CAV adoption rate.
+     Copies intersection_cav25.rou.xml (25% veh_av / 75% veh_human flow split).
+     Manual vehicles (veh_human) receive moduleType="*=0" in the ini so they
+     run as pure SUMO traffic without any OMNeT++ network stack.
+     Only veh_av vehicles get VeinsInetCar and participate in V2X / SPAT response.
+-->
+<launch>
+    <copy file="intersection.net.xml" />
+    <copy file="intersection_cav25.rou.xml" />
+    <copy file="intersection.poly.xml" />
+    <copy file="intersection_cav25.sumo.cfg" type="config" />
+</launch>

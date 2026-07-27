@@ -1,0 +1,32 @@
+# Provenance record written by 06_analysis/matlab/export_fitted_phy_model_coeffs_5gtoolbox_core.m
+# at the time these coefficients were fitted. Source paths from the original
+# run have been replaced with placeholders; the coefficient files themselves
+# live alongside this manifest.
+#
+Runtime export directory: <this directory>
+Source model file: <5G Toolbox export dir>/generalized_phy_model_5gtoolbox.mat
+Source training CSV: <5G Toolbox export dir>/generalized_phy_training_dataset_5gtoolbox.csv
+Equation summary: generalized_phy_equations.txt
+Runtime constants: runtime_constants.csv
+BLER summary: bler_curve_summary.csv
+
+Coefficient files:
+  path_loss_coefficients.csv
+  rssi_coefficients.csv
+  delay_spread_log10_coefficients.csv
+  k_factor_coefficients.csv
+  channel_gain_los_coefficients.csv
+  channel_gain_nlos_coefficients.csv
+  channel_gain_coefficients.csv
+
+BLER tables:
+  CDL-A -> bler_curve_cdl_a.csv (delaySpreadNs=30.74, dopplerHz=76.70)
+  CDL-C -> bler_curve_cdl_c.csv (delaySpreadNs=32.70, dopplerHz=71.93)
+  CDL-D -> bler_curve_cdl_d.csv (delaySpreadNs=20.22, dopplerHz=67.56)
+  CDL-E -> bler_curve_cdl_e.csv (delaySpreadNs=24.32, dopplerHz=67.56)
+
+Recommended OMNeT runtime use:
+  1. Compute predictors from live geometry.
+  2. Evaluate the fitted linear equations for path loss, delay spread, K-factor, and channel gain.
+  3. Sample correlated shadow fading per link epoch.
+  4. Convert effective Rx power to SINR and interpolate profile-specific BLER.

@@ -1,0 +1,72 @@
+# Citation metadata, read by GitHub and by Zenodo when the DOI is minted.
+#
+# Remaining placeholders to fill in before publishing: the repository URL, and
+# the DOI Zenodo issues after the first release. ORCIDs and affiliations can be
+# added per author.
+#
+# Steps:
+#   1. Push the repository to GitHub.
+#   2. Enable it in Zenodo (zenodo.org -> GitHub -> enable the repository).
+#   3. Create a GitHub Release (for example v1.0.0). Zenodo archives it and
+#      issues a DOI.
+#   4. Add that DOI to the `doi:` field below and to README.md.
+#      Cite the concept DOI in the paper: it resolves to the latest version, so
+#      later releases remain covered by the same citation.
+
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "RadioRealismNS3_Learn: distilling ns-3 5G-LENA NR-V2X realism into an analytical PC5 model for OMNeT++/Veins"
+abstract: >-
+  Simulation code comparing 5G NR PC5 (V2V sidelink) channel realism between a
+  full-stack ns-3 5G-LENA NR-V2X simulation and an application-layer analytical
+  model in OMNeT++/Veins/INET. ns-3 serves as the reference: load-conditioned
+  surrogate functions for BLER(SINR), SB-SPS resource collision, half-duplex loss
+  and HARQ-inflated channel occupancy are fitted to its traces and applied to the
+  analytical model's per-cause loss hooks. The fitted model is evaluated against
+  a published-analytical reference across six CAV adoption rates over a shared
+  SUMO mobility trace.
+type: software
+version: "1.0.0"
+date-released: "2026-07-20"
+license: MIT
+
+authors:
+  - family-names: Bello
+    given-names: Rasheed
+    email: rbello@scsu.edu
+    affiliation: "South Carolina State University"
+  - family-names: Comert
+    given-names: Gurcan
+  - family-names: Vaidyan
+    given-names: Varghese
+  - family-names: Sahoo
+    given-names: Jagruti
+  - family-names: Bendigeri
+    given-names: Vijay
+  - family-names: Mwakalonge
+    given-names: Judith
+
+contact:
+  - family-names: Bello
+    given-names: Rasheed
+    email: rbello@scsu.edu
+
+repository-code: "https://github.com/<USER>/RadioRealismNS3_Learn"
+# doi: "10.5281/zenodo.<RECORD ID>"
+
+keywords:
+  - V2X
+  - 5G NR sidelink
+  - PC5
+  - NR-V2X Mode 2
+  - SB-SPS
+  - ns-3
+  - 5G-LENA
+  - OMNeT++
+  - Veins
+  - INET
+  - SUMO
+  - vehicular networks
+  - knowledge distillation
+  - surrogate model
+  - connected and automated vehicles

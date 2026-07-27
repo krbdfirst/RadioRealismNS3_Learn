@@ -1,0 +1,12 @@
+key,value
+fc_hz,5900000000
+fc_ghz,5.9
+tx_power_dbm,23
+sample_rate_hz,30720000
+num_time_samples,15360
+scs_khz,30
+n_size_grid,52
+noise_figure_db,7
+bandwidth_hz,18720000
+shadow_sigma_los_db,4
+shadow_sigma_nlos_db,7.82

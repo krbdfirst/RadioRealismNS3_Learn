@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 2026-02-28 14:52:20 by Eclipse SUMO netedit Version 1.22.0
+-->
+
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
+    <!-- VTypes -->
+    <vType id="veh_av" minGap="1.00" speedFactor="normc(1.00,0.02,0.95,1.05)" vClass="passenger" color="cyan" laneChangeModel="LC2013" lcSpeedGain="0.6" lcKeepRight="0.8" lcAssertive="0.6" jmTimegapMinor="1.2" carFollowModel="IDM" accel="3.5" decel="3" emergencyDecel="10" collisionMinGapFactor="0.2" tau="0.6" delta="4"/>
+    <vType id="veh_human" minGap="2.00" speedFactor="normc(1.00,0.10,0.80,1.20)" vClass="passenger" impatience="0.50" laneChangeModel="LC2013" lcCooperative="0.6" lcSpeedGain="1.2" lcKeepRight="1.2" lcAssertive="1.1" jmCrossingGap="5" jmDriveAfterYellowTime="0.8" jmDriveAfterRedTime="0.1" jmDriveRedSpeed="0.5" jmIgnoreKeepClearTime="1" jmIgnoreFoeSpeed="2" jmIgnoreFoeProb="0.1" jmSigmaMinor="0.4" carFollowModel="IDM" accel="2.0" decel="4.5" collisionMinGapFactor="0.6" tau="1.5" delta="4"/>
+    <!-- Routes -->
+    <route id="l_11" edges="401208126#3 366077071#0"/>
+    <route id="l_15" edges="401217076#2 401208129#0"/>
+    <route id="l_2" edges="401208128#2 23810692#0"/>
+    <route id="l_6" edges="405006150#1 401208131#0"/>
+    <route id="r_10" edges="401208126#3 23810692#0"/>
+    <route id="r_14" edges="401217076#2 401208131#0"/>
+    <route id="r_3" edges="401208128#2 366077071#0"/>
+    <route id="r_5" edges="405006150#1 401208129#0"/>
+    <route id="s_0" edges="401208128#2 401208129#0"/>
+    <route id="s_12" edges="401217076#2 366077071#0"/>
+    <route id="s_4" edges="405006150#1 23810692#0"/>
+    <route id="s_8" edges="401208126#3 401208131#0"/>
+    <route id="t_1" edges="401208128#2 401208131#0"/>
+    <route id="t_13" edges="401217076#2 23810692#0"/>
+    <route id="t_7" edges="405006150#1 366077071#0"/>
+    <route id="t_9" edges="401208126#3 401208129#0"/>
+    <!-- Vehicles, persons and containers (sorted by depart) -->
+    <flow id="fc_00" type="veh_av" begin="0.00" route="s_0" end="3600.00" vehsPerHour="1"/>
+    <flow id="f_0_h" type="veh_human" begin="0.00" route="s_0" end="3600.00" vehsPerHour="2926.83"/>
+    <!-- <flow id="fc_10" type="veh_av" begin="0.00" route="r_10" end="3600.00" vehsPerHour="1"/>-->
+    <flow id="f_10_h" type="veh_human" begin="0.00" route="r_10" end="3600.00" vehsPerHour="120"/>
+    <!--<flow id="fc_11" type="veh_av" begin="0.00" route="l_11" end="3600.00" vehsPerHour="1"/>-->
+    <flow id="f_11_h" type="veh_human" begin="0.00" route="l_11" end="3600.00" vehsPerHour="124"/>
+    <!--<flow id="fc_12" type="veh_av" begin="0.00" route="t_13" end="3600.00" vehsPerHour="1"/>-->
+    <flow id="f_12_h" type="veh_human" begin="0.00" route="t_13" end="3600.00" vehsPerHour="50"/>
+    <flow id="fc_13" type="veh_av" begin="0.00" route="s_12" end="3600.00" vehsPerHour="1"/>
+    <flow id="f_13_h" type="veh_human" begin="0.00" route="s_12" end="3600.00" vehsPerHour="1469.39"/>
+    <!--<flow id="fc_14" type="veh_av" begin="0.00" route="r_14" end="3600.00" vehsPerHour="1"/>-->
+    <flow id="f_14_h" type="veh_human" begin="0.00" route="r_14" end="3600.00" vehsPerHour="100"/>
+   <!-- <flow id="fc_15" type="veh_av" begin="0.00" route="l_15" end="3600.00" vehsPerHour="1"/>-->
+    <flow id="f_15_h" type="veh_human" begin="0.00" route="l_15" end="3600.00" vehsPerHour="100"/>
+   <!-- <flow id="fc_01" type="veh_av" begin="0.00" route="t_1" end="3600.00" vehsPerHour="1"/>-->
+    <flow id="f_1_h" type="veh_human" begin="0.00" route="t_1" end="3600.00" vehsPerHour="54"/>
+    <!--<flow id="fc_02" type="veh_av" begin="0.00" route="l_2" end="3600.00" vehsPerHour="1"/>-->
+    <flow id="f_2_h" type="veh_human" begin="0.00" route="l_2" end="3600.00" vehsPerHour="124"/>
+    <!--<flow id="fc_03" type="veh_av" begin="0.00" route="r_3" end="3600.00" vehsPerHour="1"/>-->
+    <flow id="f_3_h" type="veh_human" begin="0.00" route="r_3" end="3600.00" vehsPerHour="120"/>
+    <flow id="fc_04" type="veh_av" begin="0.00" route="s_4" end="3600.00" vehsPerHour="1"/>
+    <flow id="f_4_h" type="veh_human" begin="0.00" route="s_4" end="3600.00" vehsPerHour="1469.39"/>
+    <!--<flow id="fc_05" type="veh_av" begin="0.00" route="r_5" end="3600.00" vehsPerHour="1"/>-->
+    <flow id="f_5_h" type="veh_human" begin="0.00" route="r_5" end="3600.00" vehsPerHour="100"/>
+    <!--<flow id="fc_06" type="veh_av" begin="0.00" route="l_6" end="3600.00" vehsPerHour="1"/>-->
+    <flow id="f_6_h" type="veh_human" begin="0.00" route="l_6" end="3600.00" vehsPerHour="100"/>
+    <!--<flow id="fc_07" type="veh_av" begin="0.00" route="t_7" end="3600.00" vehsPerHour="1"/>-->
+    <flow id="f_7_h" type="veh_human" begin="0.00" route="t_7" end="3600.00" vehsPerHour="50"/>
+    <flow id="fc_08" type="veh_av" begin="0.00" route="s_8" end="3600.00" vehsPerHour="1"/>
+    <flow id="f_8_h" type="veh_human" begin="0.00" route="s_8" end="3600.00" vehsPerHour="2926.83"/>
+    <!--<flow id="fc_09" type="veh_av" begin="0.00" route="t_9" end="3600.00" vehsPerHour="1"/>-->
+    <flow id="f_9_h" type="veh_human" begin="0.00" route="t_9" end="3600.00" vehsPerHour="56"/>
+</routes>
