@@ -18,10 +18,17 @@ and the reference implementation used to derive and sanity-check them is
 **The BLER curve path is project-internal.** The `bler_curve` row records the
 path the curve was read from when the parameters were produced. In this
 repository that curve is `../phy_5gtoolbox/bler_curve_cdl_c.csv`, which is what
-`omnetpp_inet.ini` points `m3BlerCurveCsv` at. It is a 5G-Toolbox CDL-C curve at
-QPSK, code rate 490/1024 (MCS 8), deliberately independent of the ns-3 teacher,
-which runs MCS 14 — so the analytical reference borrows nothing from the ground
-truth it is scored against.
+`omnetpp_inet.ini` points `m3BlerCurveCsv` at. It is a 5G-Toolbox CDL-C curve
+generated at QPSK with target code rate 490/1024, and is deliberately
+independent of the ns-3 teacher, so the analytical reference borrows nothing
+from the ground truth it is scored against.
+
+The teacher transmits at MCS 14, which in the NR modulation and coding table the
+`nr` module implements is 16-QAM at code rate 0.54. Comparing spectral
+efficiencies, 2 x 0.479 against 4 x 0.54, the curve represents a link carrying
+roughly 44 % of what the teacher carries, hence a more robust one. Note that the
+curve is specified by modulation and code rate rather than by an MCS index; the
+nearest index, MCS 8, is QPSK at 0.59 and is not identical to it.
 
 **`n_r = 375` is the full-RRI value, not the deployed one.** Cao's candidate
 resource count can be taken over the reservation period or over the actual

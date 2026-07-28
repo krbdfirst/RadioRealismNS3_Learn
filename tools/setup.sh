@@ -12,6 +12,13 @@
 # Nothing is compiled here, and no file outside the reported paths is touched.
 # Re-running is safe.
 #
+# NOTE ON $VEINS_ROOT: step 3 copies the overlay INTO the Veins tree. The overlay
+# carries only the files this study publishes, so a tree that also holds
+# unrelated local work will have those files replaced. Any file that differs is
+# copied to a timestamped backup directory inside $VEINS_ROOT first, and the
+# path is printed. Point VEINS_ROOT at a dedicated checkout to keep the two
+# separate.
+#
 # Usage:
 #   ./tools/setup.sh              # check, install scenario, configure
 #   ./tools/setup.sh --check      # check prerequisites only
@@ -188,6 +195,26 @@ while IFS= read -r rel; do
         printf '  overwrite  %s\n' "$rel"
     fi
 done < <(cd "$RR_VEINS_OVERLAY" && find . -type f | sed 's|^\./||' | sort)
+
+# Back up anything that differs before overwriting it. A Veins tree that also
+# holds unrelated local work would otherwise lose it silently, and the overlay
+# carries only the files this study publishes.
+if [ "$_n_over" -gt 0 ]; then
+    BACKUP="$VEINS_ROOT/.rr_overlay_backup_$(date +%Y%m%d-%H%M%S)"
+    while IFS= read -r rel; do
+        src="$RR_VEINS_OVERLAY/$rel"; dst="$VEINS_ROOT/$rel"
+        if [ -e "$dst" ] && ! cmp -s "$src" "$dst"; then
+            mkdir -p "$BACKUP/$(dirname "$rel")"
+            cp -p "$dst" "$BACKUP/$rel"
+        fi
+    done < <(cd "$RR_VEINS_OVERLAY" && find . -type f | sed 's|^\./||' | sort)
+    echo ""
+    echo "  $_n_over file(s) differ and will be replaced."
+    echo "  Previous versions saved to:"
+    echo "    $BACKUP"
+    echo "  Restore with:  cp -R \"$BACKUP\"/. \"$VEINS_ROOT\"/"
+    echo ""
+fi
 
 cp -R "$RR_VEINS_OVERLAY"/. "$VEINS_ROOT"/ \
     || { echo "  overlay copy FAILED"; exit 1; }

@@ -48,7 +48,14 @@ cd "$VEINS_ROOT/subprojects/veins_inet" && ./configure --with-inet="$INET_ROOT"
 ```
 
 Copying is deliberate: the overlay ships **complete files**, not context
-patches, so it applies cleanly and cannot half-fail. The generated
+patches, so it applies cleanly and cannot half-fail.
+
+The same property makes the target matter. Applying the overlay replaces its 46
+files outright, so a Veins tree carrying unrelated local modifications to any of
+them will have that work overwritten. `tools/setup.sh` copies every differing
+file into a timestamped backup directory under `$VEINS_ROOT` before writing and
+prints the restore command, but the cleaner arrangement is to point `VEINS_ROOT`
+at a checkout reserved for this study. The generated
 `Makefile`s and `bin/veins_run` wrappers are not included — `configure` writes
 absolute paths into them, so they must be produced locally.
 
