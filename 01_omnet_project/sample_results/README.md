@@ -119,35 +119,43 @@ to. Regenerating it needs the stage-1 traces for the matching rates and seeds.
 
 ## `paper_figure_data/` — the reported model comparison
 
-The three-way comparison the study reports: the NS-3 teacher, the Combined
-Analytical Reference (`Prop_Analytical_M3`), and the distilled cascade
-(`Prop_NS3Learn`). Produced by `build_deviation_analysis.py` over the OMNeT run
-tree and the teacher ground truth.
+The three treatments the study compares against the NS-3 teacher: the stock
+OMNeT/INET channel (`Prop_Plain`), the Combined Analytical Reference
+(`Prop_Analytical_M3`), and the distilled cascade (`Prop_NS3Learn`). Aggregated
+from the OMNeT run tree by `build_deviation_analysis.py`.
 
 | File | Contents |
 |---|---|
-| `ns3_groundtruth.csv` | NS-3 per-instant in-range PDR per adoption rate — the reference both models are scored against |
-| `model_comparison.csv` | Per rate: NS-3, Analytical_M3 and NS3Learn delivery, each model's signed deviation from NS-3, and its loss split into half-duplex and contention-plus-decode |
+| `ns3_groundtruth.csv` | NS-3 per-instant in-range PDR per adoption rate — the reference every treatment is scored against |
+| `model_comparison.csv` | Per rate: teacher and treatment delivery, each treatment's signed deviation, and the M3 and NS3Learn loss split into half-duplex and contention-plus-decode |
 
-Mean absolute deviation from the teacher over the six rates is **0.420 for
-Analytical_M3** and **0.085 for NS3Learn**, a factor of 5.0.
+Mean absolute deviation from the teacher across the six rates:
 
-The two models miss in opposite directions, which is the substantive result. The
-analytical reference is optimistic everywhere (+0.03 at 1 % adoption rising to
-+0.66 at 100 %), because both of its loss terms stay small: its half-duplex term
-is the constant $t_s/T_{RRI}=0.01$ and its contention term reaches only 0.22. The
-cascade learns a half-duplex loss of 0.08–0.10 and a contention-plus-decode loss
-that reaches 0.75, and it is mildly pessimistic (−0.15 to −0.03). The gap between
-the two is therefore attributable to how much loss each assigns to the medium,
-not to propagation.
+| Treatment | Mean absolute deviation |
+|---|---|
+| Plain (stock INET scalar radio) | 0.521 |
+| Combined Analytical Reference | 0.420 |
+| NS3Learn cascade | **0.084** |
+
+Three observations the numbers support. The stock channel delivers 1.000 at every
+density, so it registers no contention whatsoever. The analytical reference does
+respond to density, yet remains optimistic throughout, its error widening from
++0.03 at 1 % adoption to +0.66 at full adoption. The cascade sits within 0.15 of
+the teacher everywhere and errs slightly low.
+
+Loss attribution explains the separation. Half-duplex in the analytical reference
+is the constant $t_s/T_{RRI} = 0.01$, and its contention term peaks at 0.22. The
+cascade learns half-duplex loss of 0.08–0.10 and contention-plus-decode loss
+reaching 0.75. What separates the two models is the share of loss each assigns to
+the medium.
 
 **Delivery is monotone in density, not in adoption rate.** The teacher reads 0.183
 at 50 % but 0.339 at 75 %. Runs at 75 % and 100 % use a 60 s window against 200 s
-at lower rates, matched on both the NS-3 and the OMNeT side, so the shorter window
+at lower rates, matched on the NS-3 and OMNeT sides alike, and the shorter window
 admits less traffic build-up: mean in-range neighbours peak at 194.6 at 50 % and
-fall to 93.8 at 75 %. Sorted by measured density rather than by adoption label,
-delivery decreases monotonically. Any figure plotting delivery against adoption
-rate needs this stated, or should use density on the horizontal axis.
+fall to 93.8 at 75 %. Ordered by measured density the sequence decreases
+monotonically. Any figure drawn against adoption rate needs this stated, or
+should place density on the horizontal axis.
 
 ---
 
