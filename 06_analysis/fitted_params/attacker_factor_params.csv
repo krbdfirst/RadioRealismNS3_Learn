@@ -1,2 +1,0 @@
-qa_b0,qa_b1,qa_b2,qa_b3,form
--0.35615055668661155,0.011303554868023438,-0.02694196254756004,0.12066115225433331,collision=1-(1-base(n))*(1-qa)^attacker; qa=sigmoid(b0+b1*log10(rate)+b2*log10(n+1)+b3*log10(rate)*log10(n+1))

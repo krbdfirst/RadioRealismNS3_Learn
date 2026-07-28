@@ -1,2 +1,0 @@
-c0,c1,feature,note
--15.353413579230882,6.919049027312509,log10(offered_load),collision=sigmoid(c0+c1*log10(n*Hz)); offered_load=sum in-range neighbour rates

@@ -117,34 +117,37 @@ to. Regenerating it needs the stage-1 traces for the matching rates and seeds.
 
 ---
 
-## `paper_figure_data/` — the reduced data behind the reported comparison
+## `paper_figure_data/` — the reported model comparison
 
-The aggregates the comparison figures are drawn from, produced by
-`06_analysis/python/build_paper_figure_data.py` and the `build_*` figure scripts.
-They are small, and they carry the headline numbers, so the central claims can be
-checked without rerunning either simulator.
+The three-way comparison the study reports: the NS-3 teacher, the Combined
+Analytical Reference (`Prop_Analytical_M3`), and the distilled cascade
+(`Prop_NS3Learn`). Produced by `build_deviation_analysis.py` over the OMNeT run
+tree and the teacher ground truth.
 
 | File | Contents |
 |---|---|
-| `ns3_groundtruth.csv` | ns-3 per-instant in-range PDR per adoption rate — the reference every model is scored against |
-| `per_instant_by_rate.csv` | Per-instant PDR by adoption rate for ns-3 (per-instant and time-averaged) alongside the analytical, generalized and ns3learn treatments |
-| `loss_breakdown.csv` | Delivered fraction split into loss by collision, half-duplex and decode, per rate and density — the contention-versus-propagation attribution |
-| `ns3_distance.csv`, `omnet_distance.csv` | PDR against distance bin, per rate, for the teacher and for OMNeT |
-| `per_txrx_50_dense.csv` | Per transmitter–receiver pair, ns-3 against OMNeT at 50 % adoption, tagged by geometry and seed — the cross-geometry transfer check |
+| `ns3_groundtruth.csv` | NS-3 per-instant in-range PDR per adoption rate — the reference both models are scored against |
+| `model_comparison.csv` | Per rate: NS-3, Analytical_M3 and NS3Learn delivery, each model's signed deviation from NS-3, and its loss split into half-duplex and contention-plus-decode |
 
-Two cautions when reading these.
+Mean absolute deviation from the teacher over the six rates is **0.420 for
+Analytical_M3** and **0.085 for NS3Learn**, a factor of 5.0.
 
-The ns-3 ground truth is **not monotone in adoption rate**: it falls 0.952 (1 %)
-to 0.183 (50 %), then reads 0.339 at 75 % before 0.178 at 100 %. Runs at 75 % and
-100 % use a 60 s window while the lower rates use 200 s, on both the ns-3 and the
-OMNeT side. The shorter window admits less traffic build-up, so in-range density
-at 75 % is not simply higher than at 50 %. Delivery should be read against
-measured density rather than against the adoption label.
+The two models miss in opposite directions, which is the substantive result. The
+analytical reference is optimistic everywhere (+0.03 at 1 % adoption rising to
++0.66 at 100 %), because both of its loss terms stay small: its half-duplex term
+is the constant $t_s/T_{RRI}=0.01$ and its contention term reaches only 0.22. The
+cascade learns a half-duplex loss of 0.08–0.10 and a contention-plus-decode loss
+that reaches 0.75, and it is mildly pessimistic (−0.15 to −0.03). The gap between
+the two is therefore attributable to how much loss each assigns to the medium,
+not to propagation.
 
-Accuracy figures quoted elsewhere are at different granularities and are not
-interchangeable: per-transmitter-receiver-pair error, per-distance-bin error, and
-per-reception calibration are separate quantities. Phase 12c of the distillation
-log flags one such comparison explicitly.
+**Delivery is monotone in density, not in adoption rate.** The teacher reads 0.183
+at 50 % but 0.339 at 75 %. Runs at 75 % and 100 % use a 60 s window against 200 s
+at lower rates, matched on both the NS-3 and the OMNeT side, so the shorter window
+admits less traffic build-up: mean in-range neighbours peak at 194.6 at 50 % and
+fall to 93.8 at 75 %. Sorted by measured density rather than by adoption label,
+delivery decreases monotonically. Any figure plotting delivery against adoption
+rate needs this stated, or should use density on the horizontal axis.
 
 ---
 
