@@ -117,6 +117,37 @@ to. Regenerating it needs the stage-1 traces for the matching rates and seeds.
 
 ---
 
+## `paper_figure_data/` — the reduced data behind the reported comparison
+
+The aggregates the comparison figures are drawn from, produced by
+`06_analysis/python/build_paper_figure_data.py` and the `build_*` figure scripts.
+They are small, and they carry the headline numbers, so the central claims can be
+checked without rerunning either simulator.
+
+| File | Contents |
+|---|---|
+| `ns3_groundtruth.csv` | ns-3 per-instant in-range PDR per adoption rate — the reference every model is scored against |
+| `per_instant_by_rate.csv` | Per-instant PDR by adoption rate for ns-3 (per-instant and time-averaged) alongside the analytical, generalized and ns3learn treatments |
+| `loss_breakdown.csv` | Delivered fraction split into loss by collision, half-duplex and decode, per rate and density — the contention-versus-propagation attribution |
+| `ns3_distance.csv`, `omnet_distance.csv` | PDR against distance bin, per rate, for the teacher and for OMNeT |
+| `per_txrx_50_dense.csv` | Per transmitter–receiver pair, ns-3 against OMNeT at 50 % adoption, tagged by geometry and seed — the cross-geometry transfer check |
+
+Two cautions when reading these.
+
+The ns-3 ground truth is **not monotone in adoption rate**: it falls 0.952 (1 %)
+to 0.183 (50 %), then reads 0.339 at 75 % before 0.178 at 100 %. Runs at 75 % and
+100 % use a 60 s window while the lower rates use 200 s, on both the ns-3 and the
+OMNeT side. The shorter window admits less traffic build-up, so in-range density
+at 75 % is not simply higher than at 50 %. Delivery should be read against
+measured density rather than against the adoption label.
+
+Accuracy figures quoted elsewhere are at different granularities and are not
+interchangeable: per-transmitter-receiver-pair error, per-distance-bin error, and
+per-reception calibration are separate quantities. Phase 12c of the distillation
+log flags one such comparison explicitly.
+
+---
+
 ## `omnet_dist_pdr/` — stage 7: OMNeT output using the fitted model
 
 PDR against distance for the two headline treatments across six adoption rates,

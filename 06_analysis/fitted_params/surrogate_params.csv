@@ -1,0 +1,2 @@
+hd,interference_a,capture,form,noiseFloor_dbm
+0.57999576243413,4.1073089753537045e-11,0.17612885587167781,reach=(1-coll)+cap*coll; I_db=a*log10(1+n),-94.27694155597914

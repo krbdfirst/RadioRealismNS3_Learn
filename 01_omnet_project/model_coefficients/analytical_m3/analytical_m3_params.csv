@@ -1,0 +1,15 @@
+param,value,provenance
+tx_power_dbm,23.0,teacher txPower
+noise_floor_dbm,-94.277,-174+10log10(18.72e6)+7
+fc_ghz,5.9,spatCarrierFrequencyGHz
+h_tx_m,1.5,V2V antenna
+h_rx_m,1.5,V2V antenna
+sigma_los_db,3.0,TR37885 V2V-Urban
+sigma_nlosv_db,5.408,TR37885 shadow (+) NLOSv excess std in quadrature
+channel,TR37885_V2V_Urban,same channel as NS-3 / ns3learn (fair comparison)
+p_hd,0.01,"t_s/T_RRI, Cao"
+n_r,375.0,"T_RRI*N_sc/t_s * usable, Cao Eq(nr)"
+pi0,0.09091,Cao stationary reselect 1/11
+p_k,0.0,teacher slProbResourceKeep
+pc5_range_m,300.0,pc5Range
+bler_curve,results/inet/phy_model_outputs_5gtoolbox_5000/runtime_coefficients/bler_curve_cdl_c.csv,5G-Toolbox CDL (independent)
