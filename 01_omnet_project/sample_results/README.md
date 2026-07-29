@@ -134,8 +134,16 @@ Mean absolute deviation from the teacher across the six rates:
 | Treatment | Mean absolute deviation |
 |---|---|
 | Plain (stock INET scalar radio) | 0.521 |
-| Combined Analytical Reference | 0.420 |
+| Combined Analytical Reference | 0.424 |
 | NS3Learn cascade | **0.084** |
+
+The analytical reference decodes against a curve matched to the teacher's link
+setting, 16-QAM at code rate 553/1024. An earlier curve at QPSK 490/1024 gave
+0.420, a difference smaller than the seed-to-seed spread and therefore not
+resolvable: per-seed delivery for one configuration carries a standard deviation
+up to 0.02, putting the standard error of a five-seed mean near 0.01. Matching
+the modulation left accuracy unchanged, which locates the reference's error in
+medium access rather than in decoding.
 
 Three observations the numbers support. The stock channel delivers 1.000 at every
 density, so it registers no contention whatsoever. The analytical reference does
